@@ -2,6 +2,23 @@ from sqlalchemy import Column, Integer, String, Date, Text, DECIMAL, TIMESTAMP, 
 from sqlalchemy.sql import func
 from database import Base
 
+
+# ─────────────────────────────────────────────
+# 👤 CUSTOMER MODEL
+# ─────────────────────────────────────────────
+
+class Customer(Base):
+    __tablename__ = "customers"
+
+    id = Column(Integer, primary_key=True, index=True)
+    card_code = Column(String(50), unique=True, nullable=False)
+    card_name = Column(String(100), nullable=False)
+    phone = Column(String(20))
+    email = Column(String(100))
+    address = Column(Text)
+    created_at = Column(TIMESTAMP, server_default=func.now())
+
+
 # ─────────────────────────────────────────────
 # 📦 SALES ORDER MODELS
 # ─────────────────────────────────────────────

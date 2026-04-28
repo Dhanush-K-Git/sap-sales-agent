@@ -1,5 +1,6 @@
 from sqlalchemy.orm import Session
 from models import (
+    Customer,
     SalesOrder, SalesOrderLine,
     SalesInvoice, SalesInvoiceLine,
     SalesReturn, SalesReturnLine
@@ -10,6 +11,23 @@ from schemas import (
     SalesReturnCreate, SalesReturnUpdate
 )
 
+
+# ─────────────────────────────────────────────
+# 👤 CUSTOMER CRUD
+# ─────────────────────────────────────────────
+
+def get_all_customers(db: Session):
+    """Get all customers"""
+    return db.query(Customer).all()
+
+
+def get_customer(db: Session, card_code: str):
+    """Get a specific customer by CardCode"""
+    return db.query(Customer).filter(
+        Customer.card_code == card_code
+    ).first()
+
+
 # ─────────────────────────────────────────────
 # 📦 SALES ORDER CRUD
 # ─────────────────────────────────────────────
@@ -17,22 +35,21 @@ from schemas import (
 def create_order(db: Session, order: SalesOrderCreate):
     """Create a new sales order"""
     db_order = SalesOrder(
-        card_code=order.card_code,
-        doc_date=order.doc_date,
-        doc_due_date=order.doc_due_date,
-        comments=order.comments
+        card_code=order.CardCode,
+        doc_date=order.DocDate,
+        doc_due_date=order.DocDueDate,
+        comments=order.Comments
     )
     db.add(db_order)
     db.commit()
     db.refresh(db_order)
 
-    # Add order lines
-    for line in order.document_lines:
+    for line in order.DocumentLines:
         db_line = SalesOrderLine(
             order_id=db_order.id,
-            item_code=line.item_code,
-            quantity=line.quantity,
-            unit_price=line.unit_price
+            item_code=line.ItemCode,
+            quantity=line.Quantity,
+            unit_price=line.UnitPrice
         )
         db.add(db_line)
     db.commit()
@@ -40,7 +57,7 @@ def create_order(db: Session, order: SalesOrderCreate):
 
 
 def get_order(db: Session, order_id: int):
-    """Get a specific sales order by ID"""
+    """Get a specific sales order"""
     return db.query(SalesOrder).filter(
         SalesOrder.id == order_id
     ).first()
@@ -51,17 +68,17 @@ def get_all_orders(db: Session):
     return db.query(SalesOrder).all()
 
 
-def update_order(db: Session, order_id: int, 
+def update_order(db: Session, order_id: int,
                   order: SalesOrderUpdate):
     """Update a sales order"""
     db_order = db.query(SalesOrder).filter(
         SalesOrder.id == order_id
     ).first()
     if db_order:
-        if order.comments:
-            db_order.comments = order.comments
-        if order.status:
-            db_order.status = order.status
+        if order.Comments:
+            db_order.comments = order.Comments
+        if order.Status:
+            db_order.status = order.Status
         db.commit()
         db.refresh(db_order)
     return db_order
@@ -109,20 +126,20 @@ def close_order(db: Session, order_id: int):
 def create_invoice(db: Session, invoice: SalesInvoiceCreate):
     """Create a new sales invoice"""
     db_invoice = SalesInvoice(
-        card_code=invoice.card_code,
-        comments=invoice.comments
+        card_code=invoice.CardCode,
+        comments=invoice.Comments
     )
     db.add(db_invoice)
     db.commit()
     db.refresh(db_invoice)
 
-    for line in invoice.document_lines:
+    for line in invoice.DocumentLines:
         db_line = SalesInvoiceLine(
             invoice_id=db_invoice.id,
-            item_code=line.item_code,
-            quantity=line.quantity,
-            tax_code=line.tax_code,
-            unit_price=line.unit_price
+            item_code=line.ItemCode,
+            quantity=line.Quantity,
+            tax_code=line.TaxCode,
+            unit_price=line.UnitPrice
         )
         db.add(db_line)
     db.commit()
@@ -130,7 +147,7 @@ def create_invoice(db: Session, invoice: SalesInvoiceCreate):
 
 
 def get_invoice(db: Session, invoice_id: int):
-    """Get a specific sales invoice by ID"""
+    """Get a specific sales invoice"""
     return db.query(SalesInvoice).filter(
         SalesInvoice.id == invoice_id
     ).first()
@@ -148,10 +165,10 @@ def update_invoice(db: Session, invoice_id: int,
         SalesInvoice.id == invoice_id
     ).first()
     if db_invoice:
-        if invoice.comments:
-            db_invoice.comments = invoice.comments
-        if invoice.status:
-            db_invoice.status = invoice.status
+        if invoice.Comments:
+            db_invoice.comments = invoice.Comments
+        if invoice.Status:
+            db_invoice.status = invoice.Status
         db.commit()
         db.refresh(db_invoice)
     return db_invoice
@@ -187,20 +204,20 @@ def cancel_invoice(db: Session, invoice_id: int):
 def create_return(db: Session, sales_return: SalesReturnCreate):
     """Create a new sales return"""
     db_return = SalesReturn(
-        card_code=sales_return.card_code,
-        comments=sales_return.comments
+        card_code=sales_return.CardCode,
+        comments=sales_return.Comments
     )
     db.add(db_return)
     db.commit()
     db.refresh(db_return)
 
-    for line in sales_return.document_lines:
+    for line in sales_return.DocumentLines:
         db_line = SalesReturnLine(
             return_id=db_return.id,
-            item_code=line.item_code,
-            quantity=line.quantity,
-            tax_code=line.tax_code,
-            unit_price=line.unit_price
+            item_code=line.ItemCode,
+            quantity=line.Quantity,
+            tax_code=line.TaxCode,
+            unit_price=line.UnitPrice
         )
         db.add(db_line)
     db.commit()
@@ -208,7 +225,7 @@ def create_return(db: Session, sales_return: SalesReturnCreate):
 
 
 def get_return(db: Session, return_id: int):
-    """Get a specific sales return by ID"""
+    """Get a specific sales return"""
     return db.query(SalesReturn).filter(
         SalesReturn.id == return_id
     ).first()
@@ -226,10 +243,10 @@ def update_return(db: Session, return_id: int,
         SalesReturn.id == return_id
     ).first()
     if db_return:
-        if sales_return.comments:
-            db_return.comments = sales_return.comments
-        if sales_return.status:
-            db_return.status = sales_return.status
+        if sales_return.Comments:
+            db_return.comments = sales_return.Comments
+        if sales_return.Status:
+            db_return.status = sales_return.Status
         db.commit()
         db.refresh(db_return)
     return db_return

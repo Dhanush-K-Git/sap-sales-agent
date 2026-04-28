@@ -1,105 +1,89 @@
 import requests
-import json
-
-# This is the base URL of SAP B1 Service Layer
-# When sir's team tests it, this will point to their real SAP server
-BASE_URL = "https://localhost:50000/b1s/v2"
-
-# We need to ignore SSL warnings for local SAP servers
-import urllib3
-urllib3.disable_warnings(urllib3.exceptions.InsecureRequestWarning)
-
 
 # ─────────────────────────────────────────────
-# 🔐 LOGIN TO SAP
+# 🌍 LIVE RENDER URL
 # ─────────────────────────────────────────────
-def sap_login(username: str, password: str, company_db: str):
-    """Login to SAP B1 and get a session cookie"""
-    url = f"{BASE_URL}/Login"
-    payload = {
-        "UserName": username,
-        "Password": password,
-        "CompanyDB": company_db
-    }
-    try:
-        response = requests.post(url, json=payload, verify=False)
-        if response.status_code == 200:
-            return response.cookies
-        else:
-            return None
-    except Exception as e:
-        return None
+BASE_URL = "https://sap-sales-agent-1.onrender.com"
 
 
 # ─────────────────────────────────────────────
 # 📦 SALES ORDER TOOLS
 # ─────────────────────────────────────────────
-def create_sales_order(card_code: str, doc_date: str, 
-                        doc_due_date: str, items: list, cookies):
-    """Create a new Sales Order in SAP B1"""
-    url = f"{BASE_URL}/Orders"
+
+def create_sales_order(card_code: str, doc_date: str,
+                        doc_due_date: str, items: list):
+    """Create a new Sales Order"""
+    url = f"{BASE_URL}/orders"
     payload = {
-        "CardCode": card_code,
-        "DocDate": doc_date,
-        "DocDueDate": doc_due_date,
-        "DocumentLines": items
+        "card_code": card_code,
+        "doc_date": doc_date,
+        "doc_due_date": doc_due_date,
+        "document_lines": items
     }
     try:
-        response = requests.post(url, json=payload, 
-                                  cookies=cookies, verify=False)
+        response = requests.post(url, json=payload)
         return response.json()
     except Exception as e:
         return {"error": str(e)}
 
 
-def get_sales_order(order_id: int, cookies):
+def get_sales_order(order_id: int):
     """Get a specific Sales Order by ID"""
-    url = f"{BASE_URL}/Orders({order_id})"
+    url = f"{BASE_URL}/orders/{order_id}"
     try:
-        response = requests.get(url, cookies=cookies, verify=False)
+        response = requests.get(url)
         return response.json()
     except Exception as e:
         return {"error": str(e)}
 
 
-def get_all_sales_orders(cookies):
+def get_all_sales_orders():
     """Get all Sales Orders"""
-    url = f"{BASE_URL}/Orders"
+    url = f"{BASE_URL}/orders"
     try:
-        response = requests.get(url, cookies=cookies, verify=False)
+        response = requests.get(url)
         return response.json()
     except Exception as e:
         return {"error": str(e)}
 
 
-def update_sales_order(order_id: int, comments: str, cookies):
+def update_sales_order(order_id: int, comments: str):
     """Update a Sales Order"""
-    url = f"{BASE_URL}/Orders({order_id})"
-    payload = {"Comments": comments}
+    url = f"{BASE_URL}/orders/{order_id}"
+    payload = {"comments": comments}
     try:
-        response = requests.patch(url, json=payload, 
-                                   cookies=cookies, verify=False)
+        response = requests.patch(url, json=payload)
         return {"message": f"Order {order_id} updated successfully"}
     except Exception as e:
         return {"error": str(e)}
 
 
-def cancel_sales_order(order_id: int, cookies):
+def cancel_sales_order(order_id: int):
     """Cancel a Sales Order"""
-    url = f"{BASE_URL}/Orders({order_id})/Cancel"
+    url = f"{BASE_URL}/orders/{order_id}/cancel"
     try:
-        response = requests.post(url, cookies=cookies, verify=False)
+        response = requests.post(url)
         return {"message": f"Order {order_id} cancelled successfully"}
     except Exception as e:
         return {"error": str(e)}
 
 
-def close_sales_order(order_id: int, cookies):
+def close_sales_order(order_id: int):
     """Close a Sales Order"""
-    url = f"{BASE_URL}/Orders({order_id})/Close"
+    url = f"{BASE_URL}/orders/{order_id}/close"
     try:
-        response = requests.post(url, cookies=cookies, verify=False)
+        response = requests.post(url)
         return {"message": f"Order {order_id} closed successfully"}
+    except Exception as e:
+        return {"error": str(e)}
+
+
+def delete_sales_order(order_id: int):
+    """Delete a Sales Order"""
+    url = f"{BASE_URL}/orders/{order_id}"
+    try:
+        response = requests.delete(url)
+        return {"message": f"Order {order_id} deleted successfully"}
     except Exception as e:
         return {"error": str(e)}
 
@@ -107,59 +91,68 @@ def close_sales_order(order_id: int, cookies):
 # ─────────────────────────────────────────────
 # 🧾 SALES INVOICE TOOLS
 # ─────────────────────────────────────────────
-def create_sales_invoice(card_code: str, items: list, cookies):
-    """Create a new Sales Invoice in SAP B1"""
-    url = f"{BASE_URL}/Invoices"
+
+def create_sales_invoice(card_code: str, items: list):
+    """Create a new Sales Invoice"""
+    url = f"{BASE_URL}/invoices"
     payload = {
-        "CardCode": card_code,
-        "DocumentLines": items
+        "card_code": card_code,
+        "document_lines": items
     }
     try:
-        response = requests.post(url, json=payload, 
-                                  cookies=cookies, verify=False)
+        response = requests.post(url, json=payload)
         return response.json()
     except Exception as e:
         return {"error": str(e)}
 
 
-def get_sales_invoice(invoice_id: int, cookies):
+def get_sales_invoice(invoice_id: int):
     """Get a specific Sales Invoice by ID"""
-    url = f"{BASE_URL}/Invoices({invoice_id})"
+    url = f"{BASE_URL}/invoices/{invoice_id}"
     try:
-        response = requests.get(url, cookies=cookies, verify=False)
+        response = requests.get(url)
         return response.json()
     except Exception as e:
         return {"error": str(e)}
 
 
-def get_all_sales_invoices(cookies):
+def get_all_sales_invoices():
     """Get all Sales Invoices"""
-    url = f"{BASE_URL}/Invoices"
+    url = f"{BASE_URL}/invoices"
     try:
-        response = requests.get(url, cookies=cookies, verify=False)
+        response = requests.get(url)
         return response.json()
     except Exception as e:
         return {"error": str(e)}
 
 
-def update_sales_invoice(invoice_id: int, comments: str, cookies):
+def update_sales_invoice(invoice_id: int, comments: str):
     """Update a Sales Invoice"""
-    url = f"{BASE_URL}/Invoices({invoice_id})"
-    payload = {"Comments": comments}
+    url = f"{BASE_URL}/invoices/{invoice_id}"
+    payload = {"comments": comments}
     try:
-        response = requests.patch(url, json=payload, 
-                                   cookies=cookies, verify=False)
+        response = requests.patch(url, json=payload)
         return {"message": f"Invoice {invoice_id} updated successfully"}
     except Exception as e:
         return {"error": str(e)}
 
 
-def cancel_sales_invoice(invoice_id: int, cookies):
+def cancel_sales_invoice(invoice_id: int):
     """Cancel a Sales Invoice"""
-    url = f"{BASE_URL}/Invoices({invoice_id})/Cancel"
+    url = f"{BASE_URL}/invoices/{invoice_id}/cancel"
     try:
-        response = requests.post(url, cookies=cookies, verify=False)
+        response = requests.post(url)
         return {"message": f"Invoice {invoice_id} cancelled successfully"}
+    except Exception as e:
+        return {"error": str(e)}
+
+
+def delete_sales_invoice(invoice_id: int):
+    """Delete a Sales Invoice"""
+    url = f"{BASE_URL}/invoices/{invoice_id}"
+    try:
+        response = requests.delete(url)
+        return {"message": f"Invoice {invoice_id} deleted successfully"}
     except Exception as e:
         return {"error": str(e)}
 
@@ -167,58 +160,67 @@ def cancel_sales_invoice(invoice_id: int, cookies):
 # ─────────────────────────────────────────────
 # 🔄 SALES RETURN TOOLS
 # ─────────────────────────────────────────────
-def create_sales_return(card_code: str, items: list, cookies):
-    """Create a new Sales Return in SAP B1"""
-    url = f"{BASE_URL}/Returns"
+
+def create_sales_return(card_code: str, items: list):
+    """Create a new Sales Return"""
+    url = f"{BASE_URL}/returns"
     payload = {
-        "CardCode": card_code,
-        "DocumentLines": items
+        "card_code": card_code,
+        "document_lines": items
     }
     try:
-        response = requests.post(url, json=payload, 
-                                  cookies=cookies, verify=False)
+        response = requests.post(url, json=payload)
         return response.json()
     except Exception as e:
         return {"error": str(e)}
 
 
-def get_sales_return(return_id: int, cookies):
+def get_sales_return(return_id: int):
     """Get a specific Sales Return by ID"""
-    url = f"{BASE_URL}/Returns({return_id})"
+    url = f"{BASE_URL}/returns/{return_id}"
     try:
-        response = requests.get(url, cookies=cookies, verify=False)
+        response = requests.get(url)
         return response.json()
     except Exception as e:
         return {"error": str(e)}
 
 
-def get_all_sales_returns(cookies):
+def get_all_sales_returns():
     """Get all Sales Returns"""
-    url = f"{BASE_URL}/Returns"
+    url = f"{BASE_URL}/returns"
     try:
-        response = requests.get(url, cookies=cookies, verify=False)
+        response = requests.get(url)
         return response.json()
     except Exception as e:
         return {"error": str(e)}
 
 
-def update_sales_return(return_id: int, comments: str, cookies):
+def update_sales_return(return_id: int, comments: str):
     """Update a Sales Return"""
-    url = f"{BASE_URL}/Returns({return_id})"
-    payload = {"Comments": comments}
+    url = f"{BASE_URL}/returns/{return_id}"
+    payload = {"comments": comments}
     try:
-        response = requests.patch(url, json=payload, 
-                                   cookies=cookies, verify=False)
+        response = requests.patch(url, json=payload)
         return {"message": f"Return {return_id} updated successfully"}
     except Exception as e:
         return {"error": str(e)}
 
 
-def cancel_sales_return(return_id: int, cookies):
+def cancel_sales_return(return_id: int):
     """Cancel a Sales Return"""
-    url = f"{BASE_URL}/Returns({return_id})/Cancel"
+    url = f"{BASE_URL}/returns/{return_id}/cancel"
     try:
-        response = requests.post(url, cookies=cookies, verify=False)
+        response = requests.post(url)
         return {"message": f"Return {return_id} cancelled successfully"}
+    except Exception as e:
+        return {"error": str(e)}
+
+
+def delete_sales_return(return_id: int):
+    """Delete a Sales Return"""
+    url = f"{BASE_URL}/returns/{return_id}"
+    try:
+        response = requests.delete(url)
+        return {"message": f"Return {return_id} deleted successfully"}
     except Exception as e:
         return {"error": str(e)}

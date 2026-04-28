@@ -3,38 +3,54 @@ from typing import List, Optional
 from datetime import date
 
 # ─────────────────────────────────────────────
+# 👤 CUSTOMER SCHEMAS
+# ─────────────────────────────────────────────
+
+class CustomerResponse(BaseModel):
+    id: int
+    CardCode: str
+    CardName: str
+    Phone: Optional[str]
+    Email: Optional[str]
+    Address: Optional[str]
+
+    class Config:
+        from_attributes = True
+
+
+# ─────────────────────────────────────────────
 # 📦 SALES ORDER SCHEMAS
 # ─────────────────────────────────────────────
 
 class SalesOrderLineSchema(BaseModel):
-    item_code: str
-    quantity: int
-    unit_price: float
+    ItemCode: str
+    Quantity: int
+    UnitPrice: float
 
     class Config:
         from_attributes = True
 
 
 class SalesOrderCreate(BaseModel):
-    card_code: str
-    doc_date: date
-    doc_due_date: date
-    comments: Optional[str] = None
-    document_lines: List[SalesOrderLineSchema]
+    CardCode: str
+    DocDate: date
+    DocDueDate: date
+    Comments: Optional[str] = None
+    DocumentLines: List[SalesOrderLineSchema]
 
 
 class SalesOrderUpdate(BaseModel):
-    comments: Optional[str] = None
-    status: Optional[str] = None
+    Comments: Optional[str] = None
+    Status: Optional[str] = None
 
 
 class SalesOrderResponse(BaseModel):
     id: int
-    card_code: str
-    doc_date: date
-    doc_due_date: date
-    comments: Optional[str]
-    status: str
+    CardCode: str
+    DocDate: date
+    DocDueDate: date
+    Comments: Optional[str]
+    Status: str
 
     class Config:
         from_attributes = True
@@ -45,31 +61,31 @@ class SalesOrderResponse(BaseModel):
 # ─────────────────────────────────────────────
 
 class SalesInvoiceLineSchema(BaseModel):
-    item_code: str
-    quantity: int
-    tax_code: Optional[str] = None
-    unit_price: float
+    ItemCode: str
+    Quantity: int
+    TaxCode: Optional[str] = None
+    UnitPrice: float
 
     class Config:
         from_attributes = True
 
 
 class SalesInvoiceCreate(BaseModel):
-    card_code: str
-    comments: Optional[str] = None
-    document_lines: List[SalesInvoiceLineSchema]
+    CardCode: str
+    Comments: Optional[str] = None
+    DocumentLines: List[SalesInvoiceLineSchema]
 
 
 class SalesInvoiceUpdate(BaseModel):
-    comments: Optional[str] = None
-    status: Optional[str] = None
+    Comments: Optional[str] = None
+    Status: Optional[str] = None
 
 
 class SalesInvoiceResponse(BaseModel):
     id: int
-    card_code: str
-    comments: Optional[str]
-    status: str
+    CardCode: str
+    Comments: Optional[str]
+    Status: str
 
     class Config:
         from_attributes = True
@@ -80,31 +96,31 @@ class SalesInvoiceResponse(BaseModel):
 # ─────────────────────────────────────────────
 
 class SalesReturnLineSchema(BaseModel):
-    item_code: str
-    quantity: int
-    tax_code: Optional[str] = None
-    unit_price: float
+    ItemCode: str
+    Quantity: int
+    TaxCode: Optional[str] = None
+    UnitPrice: float
 
     class Config:
         from_attributes = True
 
 
 class SalesReturnCreate(BaseModel):
-    card_code: str
-    comments: Optional[str] = None
-    document_lines: List[SalesReturnLineSchema]
+    CardCode: str
+    Comments: Optional[str] = None
+    DocumentLines: List[SalesReturnLineSchema]
 
 
 class SalesReturnUpdate(BaseModel):
-    comments: Optional[str] = None
-    status: Optional[str] = None
+    Comments: Optional[str] = None
+    Status: Optional[str] = None
 
 
 class SalesReturnResponse(BaseModel):
     id: int
-    card_code: str
-    comments: Optional[str]
-    status: str
+    CardCode: str
+    Comments: Optional[str]
+    Status: str
 
     class Config:
         from_attributes = True

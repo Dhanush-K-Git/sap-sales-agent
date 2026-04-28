@@ -12,6 +12,65 @@ from schemas import (
 
 models.Base.metadata.create_all(bind=engine)
 
+# ─────────────────────────────────────────────
+# 👤 ADD SAMPLE CUSTOMERS ON STARTUP
+# ─────────────────────────────────────────────
+def add_sample_customers():
+    db = next(get_db())
+    try:
+        # Check if customers already exist
+        existing = db.query(models.Customer).first()
+        if not existing:
+            sample_customers = [
+                models.Customer(
+                    card_code="C001",
+                    card_name="Rahul Sharma",
+                    phone="9876543210",
+                    email="rahul@email.com",
+                    address="Bangalore, Karnataka"
+                ),
+                models.Customer(
+                    card_code="C002",
+                    card_name="Priya Singh",
+                    phone="9845678901",
+                    email="priya@email.com",
+                    address="Mumbai, Maharashtra"
+                ),
+                models.Customer(
+                    card_code="C003",
+                    card_name="Amit Kumar",
+                    phone="9756432109",
+                    email="amit@email.com",
+                    address="Delhi, NCR"
+                ),
+                models.Customer(
+                    card_code="C004",
+                    card_name="Sneha Patel",
+                    phone="9654321098",
+                    email="sneha@email.com",
+                    address="Ahmedabad, Gujarat"
+                ),
+                models.Customer(
+                    card_code="C005",
+                    card_name="Vikram Nair",
+                    phone="9543210987",
+                    email="vikram@email.com",
+                    address="Chennai, Tamil Nadu"
+                ),
+            ]
+            db.add_all(sample_customers)
+            db.commit()
+            print("✅ Sample customers added!")
+        else:
+            print("✅ Customers already exist!")
+    except Exception as e:
+        print(f"Error adding customers: {e}")
+    finally:
+        db.close()
+
+# Run on startup
+add_sample_customers()
+
 app = FastAPI(
     title="SAP B1 Sales API",
     description="Sales Team API for Techative Pvt Ltd Solutions",

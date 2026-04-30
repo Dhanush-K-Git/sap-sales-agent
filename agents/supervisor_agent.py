@@ -5,14 +5,10 @@ from dotenv import load_dotenv
 from agents.sales_order_agent import run_sales_order_agent
 from agents.sales_invoice_agent import run_sales_invoice_agent
 from agents.sales_return_agent import run_sales_return_agent
+from agents.fetch_agent import run_fetch_agent
 
 load_dotenv()
 
-# ─────────────────────────────────────────────
-# 🧠 THE SUPERVISOR AGENT
-# ─────────────────────────────────────────────
-
-# The LLM brain for supervisor
 llm = ChatGroq(
     model="llama-3.3-70b-versatile",
     api_key=os.getenv("GROQ_API_KEY")
@@ -23,32 +19,35 @@ def route_message(user_message: str) -> str:
     """
     Supervisor reads the user message and decides
     which agent should handle it
-    Returns: 'order', 'invoice', or 'return'
     """
-
-    system_prompt = """You are a supervisor that routes user messages 
-    to the correct sales agent.
+    system_prompt = """You are a supervisor that routes 
+    user messages to the correct sales agent.
     
-    You have 3 agents available:
-    - 'order'   : Handles sales orders (creating, reading, updating, 
-                  cancelling, closing orders)
-    - 'invoice' : Handles sales invoices (creating, reading, updating, 
-                  cancelling invoices)
-    - 'return'  : Handles sales returns (creating, reading, updating, 
-                  cancelling returns)
+    You have 4 agents available:
+    - 'order'   : Creates, updates, cancels sales orders
+    - 'invoice' : Creates, updates, cancels invoices
+    - 'return'  : Creates, updates, cancels returns
+    - 'fetch'   : Fetches, retrieves, shows, gets data
+                  Handles ALL questions about:
+                  orders, invoices, returns, customers,
+                  items, stock, summary, trends
     
-    Read the user message carefully and reply with ONLY one word:
-    either 'order', 'invoice', or 'return'
-    
-    Nothing else. Just one word.
+    Read the user message carefully and reply with 
+    ONLY one word: 'order', 'invoice', 'return' or 'fetch'
     
     Examples:
-    - "Create a sales order for C001" -> order
-    - "Show me invoice 123" -> invoice
-    - "I want to return items" -> return
-    - "Cancel order 456" -> order
-    - "Get all invoices" -> invoice
-    - "Create a return for customer C002" -> return
+    - "Create a sales order" -> order
+    - "Show me all orders" -> fetch
+    - "Get orders for Rahul" -> fetch
+    - "How many open orders?" -> fetch
+    - "What is total sales?" -> fetch
+    - "Cancel order 123" -> order
+    - "Create an invoice" -> invoice
+    - "Show all invoices" -> fetch
+    - "Create a return" -> return
+    - "Is Laptop in stock?" -> fetch
+    - "Tell me about customer Priya" -> fetch
+    - "Show me closed orders" -> fetch
     """
 
     messages = [
@@ -57,14 +56,11 @@ def route_message(user_message: str) -> str:
     ]
 
     response = llm.invoke(messages)
-    
-    # Clean the response - just get the one word
     route = response.content.strip().lower()
-    
-    # Safety check - if unexpected response default to order
-    if route not in ["order", "invoice", "return"]:
-        route = "order"
-    
+
+    if route not in ["order", "invoice", "return", "fetch"]:
+        route = "fetch"
+
     return route
 
 
@@ -73,24 +69,21 @@ def run_supervisor(user_message: str) -> str:
     Main function - takes user message,
     routes it to correct agent and returns response
     """
-
     print(f"\n{'='*50}")
     print(f"User: {user_message}")
     print(f"{'='*50}")
 
-    # Step 1: Supervisor decides which agent to call
     route = route_message(user_message)
     print(f"Supervisor Decision: Routing to → {route.upper()} agent")
     print(f"{'='*50}\n")
 
-    # Step 2: Call the correct agent
     if route == "order":
         response = run_sales_order_agent(user_message)
-
     elif route == "invoice":
         response = run_sales_invoice_agent(user_message)
-
     elif route == "return":
         response = run_sales_return_agent(user_message)
+    elif route == "fetch":
+        response = run_fetch_agent(user_message)
 
     return response

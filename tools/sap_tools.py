@@ -13,12 +13,19 @@ BASE_URL = "https://sap-sales-agent-1.onrender.com"
 def create_sales_order(card_code: str, doc_date: str,
                         doc_due_date: str, items: list):
     """Create a new Sales Order"""
-    url = f"{BASE_URL}/orders"
+    url = f"{BASE_URL}/Orders"
     payload = {
-        "card_code": card_code,
-        "doc_date": doc_date,
-        "doc_due_date": doc_due_date,
-        "document_lines": items
+        "CardCode": card_code,
+        "DocDate": doc_date,
+        "DocDueDate": doc_due_date,
+        "DocumentLines": [
+            {
+                "ItemCode": item.get("item_code") or item.get("ItemCode"),
+                "Quantity": item.get("quantity") or item.get("Quantity"),
+                "UnitPrice": item.get("unit_price") or item.get("UnitPrice")
+            }
+            for item in items
+        ]
     }
     try:
         response = requests.post(url, json=payload)
@@ -29,7 +36,7 @@ def create_sales_order(card_code: str, doc_date: str,
 
 def get_sales_order(order_id: int):
     """Get a specific Sales Order by ID"""
-    url = f"{BASE_URL}/orders/{order_id}"
+    url = f"{BASE_URL}/Orders({order_id})"
     try:
         response = requests.get(url)
         return response.json()
@@ -39,7 +46,7 @@ def get_sales_order(order_id: int):
 
 def get_all_sales_orders():
     """Get all Sales Orders"""
-    url = f"{BASE_URL}/orders"
+    url = f"{BASE_URL}/Orders"
     try:
         response = requests.get(url)
         return response.json()
@@ -49,8 +56,8 @@ def get_all_sales_orders():
 
 def update_sales_order(order_id: int, comments: str):
     """Update a Sales Order"""
-    url = f"{BASE_URL}/orders/{order_id}"
-    payload = {"comments": comments}
+    url = f"{BASE_URL}/Orders({order_id})"
+    payload = {"Comments": comments}
     try:
         response = requests.patch(url, json=payload)
         return {"message": f"Order {order_id} updated successfully"}
@@ -60,7 +67,7 @@ def update_sales_order(order_id: int, comments: str):
 
 def cancel_sales_order(order_id: int):
     """Cancel a Sales Order"""
-    url = f"{BASE_URL}/orders/{order_id}/cancel"
+    url = f"{BASE_URL}/Orders({order_id})/Cancel"
     try:
         response = requests.post(url)
         return {"message": f"Order {order_id} cancelled successfully"}
@@ -70,7 +77,7 @@ def cancel_sales_order(order_id: int):
 
 def close_sales_order(order_id: int):
     """Close a Sales Order"""
-    url = f"{BASE_URL}/orders/{order_id}/close"
+    url = f"{BASE_URL}/Orders({order_id})/Close"
     try:
         response = requests.post(url)
         return {"message": f"Order {order_id} closed successfully"}
@@ -80,7 +87,7 @@ def close_sales_order(order_id: int):
 
 def delete_sales_order(order_id: int):
     """Delete a Sales Order"""
-    url = f"{BASE_URL}/orders/{order_id}"
+    url = f"{BASE_URL}/Orders({order_id})"
     try:
         response = requests.delete(url)
         return {"message": f"Order {order_id} deleted successfully"}
@@ -94,10 +101,18 @@ def delete_sales_order(order_id: int):
 
 def create_sales_invoice(card_code: str, items: list):
     """Create a new Sales Invoice"""
-    url = f"{BASE_URL}/invoices"
+    url = f"{BASE_URL}/Invoices"
     payload = {
-        "card_code": card_code,
-        "document_lines": items
+        "CardCode": card_code,
+        "DocumentLines": [
+            {
+                "ItemCode": item.get("item_code") or item.get("ItemCode"),
+                "Quantity": item.get("quantity") or item.get("Quantity"),
+                "TaxCode": item.get("tax_code") or item.get("TaxCode"),
+                "UnitPrice": item.get("unit_price") or item.get("UnitPrice")
+            }
+            for item in items
+        ]
     }
     try:
         response = requests.post(url, json=payload)
@@ -108,7 +123,7 @@ def create_sales_invoice(card_code: str, items: list):
 
 def get_sales_invoice(invoice_id: int):
     """Get a specific Sales Invoice by ID"""
-    url = f"{BASE_URL}/invoices/{invoice_id}"
+    url = f"{BASE_URL}/Invoices({invoice_id})"
     try:
         response = requests.get(url)
         return response.json()
@@ -118,7 +133,7 @@ def get_sales_invoice(invoice_id: int):
 
 def get_all_sales_invoices():
     """Get all Sales Invoices"""
-    url = f"{BASE_URL}/invoices"
+    url = f"{BASE_URL}/Invoices"
     try:
         response = requests.get(url)
         return response.json()
@@ -128,8 +143,8 @@ def get_all_sales_invoices():
 
 def update_sales_invoice(invoice_id: int, comments: str):
     """Update a Sales Invoice"""
-    url = f"{BASE_URL}/invoices/{invoice_id}"
-    payload = {"comments": comments}
+    url = f"{BASE_URL}/Invoices({invoice_id})"
+    payload = {"Comments": comments}
     try:
         response = requests.patch(url, json=payload)
         return {"message": f"Invoice {invoice_id} updated successfully"}
@@ -139,7 +154,7 @@ def update_sales_invoice(invoice_id: int, comments: str):
 
 def cancel_sales_invoice(invoice_id: int):
     """Cancel a Sales Invoice"""
-    url = f"{BASE_URL}/invoices/{invoice_id}/cancel"
+    url = f"{BASE_URL}/Invoices({invoice_id})/Cancel"
     try:
         response = requests.post(url)
         return {"message": f"Invoice {invoice_id} cancelled successfully"}
@@ -149,7 +164,7 @@ def cancel_sales_invoice(invoice_id: int):
 
 def delete_sales_invoice(invoice_id: int):
     """Delete a Sales Invoice"""
-    url = f"{BASE_URL}/invoices/{invoice_id}"
+    url = f"{BASE_URL}/Invoices({invoice_id})"
     try:
         response = requests.delete(url)
         return {"message": f"Invoice {invoice_id} deleted successfully"}
@@ -163,10 +178,18 @@ def delete_sales_invoice(invoice_id: int):
 
 def create_sales_return(card_code: str, items: list):
     """Create a new Sales Return"""
-    url = f"{BASE_URL}/returns"
+    url = f"{BASE_URL}/Returns"
     payload = {
-        "card_code": card_code,
-        "document_lines": items
+        "CardCode": card_code,
+        "DocumentLines": [
+            {
+                "ItemCode": item.get("item_code") or item.get("ItemCode"),
+                "Quantity": item.get("quantity") or item.get("Quantity"),
+                "TaxCode": item.get("tax_code") or item.get("TaxCode"),
+                "UnitPrice": item.get("unit_price") or item.get("UnitPrice")
+            }
+            for item in items
+        ]
     }
     try:
         response = requests.post(url, json=payload)
@@ -177,7 +200,7 @@ def create_sales_return(card_code: str, items: list):
 
 def get_sales_return(return_id: int):
     """Get a specific Sales Return by ID"""
-    url = f"{BASE_URL}/returns/{return_id}"
+    url = f"{BASE_URL}/Returns({return_id})"
     try:
         response = requests.get(url)
         return response.json()
@@ -187,7 +210,7 @@ def get_sales_return(return_id: int):
 
 def get_all_sales_returns():
     """Get all Sales Returns"""
-    url = f"{BASE_URL}/returns"
+    url = f"{BASE_URL}/Returns"
     try:
         response = requests.get(url)
         return response.json()
@@ -197,8 +220,8 @@ def get_all_sales_returns():
 
 def update_sales_return(return_id: int, comments: str):
     """Update a Sales Return"""
-    url = f"{BASE_URL}/returns/{return_id}"
-    payload = {"comments": comments}
+    url = f"{BASE_URL}/Returns({return_id})"
+    payload = {"Comments": comments}
     try:
         response = requests.patch(url, json=payload)
         return {"message": f"Return {return_id} updated successfully"}
@@ -208,7 +231,7 @@ def update_sales_return(return_id: int, comments: str):
 
 def cancel_sales_return(return_id: int):
     """Cancel a Sales Return"""
-    url = f"{BASE_URL}/returns/{return_id}/cancel"
+    url = f"{BASE_URL}/Returns({return_id})/Cancel"
     try:
         response = requests.post(url)
         return {"message": f"Return {return_id} cancelled successfully"}
@@ -218,9 +241,33 @@ def cancel_sales_return(return_id: int):
 
 def delete_sales_return(return_id: int):
     """Delete a Sales Return"""
-    url = f"{BASE_URL}/returns/{return_id}"
+    url = f"{BASE_URL}/Returns({return_id})"
     try:
         response = requests.delete(url)
         return {"message": f"Return {return_id} deleted successfully"}
+    except Exception as e:
+        return {"error": str(e)}
+
+
+        # ─────────────────────────────────────────────
+# 👤 CUSTOMER TOOLS
+# ─────────────────────────────────────────────
+
+def get_all_customers():
+    """Get all customers"""
+    url = f"{BASE_URL}/customers"
+    try:
+        response = requests.get(url)
+        return response.json()
+    except Exception as e:
+        return {"error": str(e)}
+
+
+def get_customer(card_code: str):
+    """Get a specific customer"""
+    url = f"{BASE_URL}/customers/{card_code}"
+    try:
+        response = requests.get(url)
+        return response.json()
     except Exception as e:
         return {"error": str(e)}

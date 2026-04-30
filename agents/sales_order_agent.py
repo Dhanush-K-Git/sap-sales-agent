@@ -11,7 +11,9 @@ from tools.sap_tools import (
     update_sales_order,
     cancel_sales_order,
     close_sales_order,
-    delete_sales_order
+    delete_sales_order,
+    get_all_customers,
+    get_customer
 )
 
 load_dotenv()
@@ -83,6 +85,22 @@ def tool_delete_sales_order(order_id: int) -> dict:
     """
     return delete_sales_order(order_id)
 
+@tool
+def tool_get_all_customers() -> dict:
+    """
+    Get all customers from the database.
+    """
+    return get_all_customers()
+
+
+@tool
+def tool_get_customer(card_code: str) -> dict:
+    """
+    Get a specific customer by card code.
+    card_code: Customer code e.g C001
+    """
+    return get_customer(card_code)
+
 
 # List of all tools
 sales_order_tools = [
@@ -92,7 +110,9 @@ sales_order_tools = [
     tool_update_sales_order,
     tool_cancel_sales_order,
     tool_close_sales_order,
-    tool_delete_sales_order
+    tool_delete_sales_order,
+    tool_get_all_customers,
+    tool_get_customer
 ]
 
 # LLM brain
@@ -108,8 +128,13 @@ sales_order_agent = create_react_agent(
     prompt="""You are a Sales Order Agent for SAP Business One.
     Your job is to help users manage sales orders.
     You can create, read, update, cancel, close and delete sales orders.
-    Always be helpful and confirm actions clearly.
-    If you need information to complete a task, ask the user for it.
+    
+    IMPORTANT RULES:
+    - Do NOT validate item codes - just use whatever ItemCode the user provides
+    - Do NOT check if customers or items exist - just process the request
+    - Always create the order with the exact details the user provides
+    - If user gives CardCode, DocDate, DocDueDate and items - create it directly
+    - Always be helpful and confirm actions clearly
     """
 )
 

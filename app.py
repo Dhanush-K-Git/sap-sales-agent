@@ -317,3 +317,28 @@ def delete_return(return_id: int, db: Session = Depends(get_db)):
 def cancel_return(return_id: int, db: Session = Depends(get_db)):
     """Cancel a sales return"""
     return crud.cancel_return(db=db, return_id=return_id)
+
+
+    # ─────────────────────────────────────────────
+# 🔍 SQL QUERY ENDPOINT
+# ─────────────────────────────────────────────
+from sqlalchemy import text
+
+@app.get("/query")
+def execute_query(sql: str, db: Session = Depends(get_db)):
+    """Execute a SQL query and return results"""
+    try:
+        result = db.execute(text(sql))
+        rows = result.fetchall()
+        columns = result.keys()
+        return {
+            "data": [
+                dict(zip(columns, row))
+                for row in rows
+            ]
+        }
+    except Exception as e:
+        raise HTTPException(
+            status_code=400,
+            detail=str(e)
+        )

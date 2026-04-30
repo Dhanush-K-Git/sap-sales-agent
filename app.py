@@ -13,6 +13,197 @@ from schemas import (
 models.Base.metadata.create_all(bind=engine)
 
 # ─────────────────────────────────────────────
+# 🗄️ CREATE SAP TABLES AND SAMPLE DATA
+# ─────────────────────────────────────────────
+def setup_sap_tables():
+    db = next(get_db())
+    try:
+        # Create tables
+        db.execute(text("""
+            CREATE TABLE IF NOT EXISTS "OCRD" (
+                "CardCode" VARCHAR(50) PRIMARY KEY,
+                "CardName" VARCHAR(100) NOT NULL,
+                "Phone" VARCHAR(20),
+                "Email" VARCHAR(100),
+                "Address" TEXT,
+                "CreditLimit" DECIMAL(10,2) DEFAULT 0.00,
+                "Balance" DECIMAL(10,2) DEFAULT 0.00
+            )
+        """))
+
+        db.execute(text("""
+            CREATE TABLE IF NOT EXISTS "OITM" (
+                "ItemCode" VARCHAR(50) PRIMARY KEY,
+                "ItemName" VARCHAR(100) NOT NULL,
+                "Price" DECIMAL(10,2) NOT NULL,
+                "Stock" DECIMAL(10,2) DEFAULT 0.00,
+                "ItemGroup" VARCHAR(50)
+            )
+        """))
+
+        db.execute(text("""
+            CREATE TABLE IF NOT EXISTS "ORDR" (
+                "DocEntry" SERIAL PRIMARY KEY,
+                "DocNum" INTEGER UNIQUE NOT NULL,
+                "DocDate" DATE NOT NULL,
+                "DocDueDate" DATE NOT NULL,
+                "CardCode" VARCHAR(50),
+                "CardName" VARCHAR(100) NOT NULL,
+                "DocTotal" DECIMAL(10,2) NOT NULL,
+                "DocStatus" VARCHAR(20) DEFAULT 'O',
+                "Comments" TEXT
+            )
+        """))
+
+        db.execute(text("""
+            CREATE TABLE IF NOT EXISTS "RDR1" (
+                "LineNum" SERIAL PRIMARY KEY,
+                "DocEntry" INTEGER REFERENCES "ORDR"("DocEntry"),
+                "ItemCode" VARCHAR(50),
+                "ItemName" VARCHAR(100) NOT NULL,
+                "Quantity" DECIMAL(10,2) NOT NULL,
+                "Price" DECIMAL(10,2) NOT NULL,
+                "LineTotal" DECIMAL(10,2) NOT NULL
+            )
+        """))
+
+        db.commit()
+        print("✅ SAP tables created!")
+
+        # Check if data exists
+        result = db.execute(text('SELECT COUNT(*) FROM "OCRD"'))
+        count = result.fetchone()[0]
+
+        if count == 0:
+            # Insert Customers
+            db.execute(text("""
+                INSERT INTO "OCRD" 
+                ("CardCode","CardName","Phone","Email",
+                 "Address","CreditLimit","Balance") 
+                VALUES
+                ('C001','Rahul Sharma','9876543210',
+                 'rahul@email.com','Bangalore, Karnataka',
+                 50000.00,15000.00),
+                ('C002','Priya Singh','9845678901',
+                 'priya@email.com','Mumbai, Maharashtra',
+                 75000.00,20000.00),
+                ('C003','Amit Kumar','9756432109',
+                 'amit@email.com','Delhi, NCR',
+                 30000.00,5000.00),
+                ('C004','Sneha Patel','9654321098',
+                 'sneha@email.com','Ahmedabad, Gujarat',
+                 60000.00,25000.00),
+                ('C005','Vikram Nair','9543210987',
+                 'vikram@email.com','Chennai, Tamil Nadu',
+                 45000.00,10000.00),
+                ('C006','Deepa Reddy','9432109876',
+                 'deepa@email.com','Hyderabad, Telangana',
+                 55000.00,18000.00),
+                ('C007','Suresh Kumar','9321098765',
+                 'suresh@email.com','Pune, Maharashtra',
+                 40000.00,8000.00),
+                ('C008','Anita Desai','9210987654',
+                 'anita@email.com','Surat, Gujarat',
+                 65000.00,22000.00),
+                ('C009','Rajesh Verma','9109876543',
+                 'rajesh@email.com','Jaipur, Rajasthan',
+                 35000.00,12000.00),
+                ('C010','Meena Iyer','9098765432',
+                 'meena@email.com','Kochi, Kerala',
+                 70000.00,30000.00)
+            """))
+
+            # Insert Items
+            db.execute(text("""
+                INSERT INTO "OITM" 
+                ("ItemCode","ItemName","Price","Stock","ItemGroup") 
+                VALUES
+                ('I001','Laptop',1500.00,50,'Electronics'),
+                ('I002','Mouse',200.00,200,'Accessories'),
+                ('I003','Keyboard',500.00,150,'Accessories'),
+                ('I004','Monitor',1500.00,75,'Electronics'),
+                ('I005','Headphones',600.00,100,'Accessories')
+            """))
+
+            # Insert Orders
+            db.execute(text("""
+                INSERT INTO "ORDR" 
+                ("DocNum","DocDate","DocDueDate","CardCode",
+                 "CardName","DocTotal","DocStatus","Comments") 
+                VALUES
+                (1001,'2026-01-05','2026-01-15','C001',
+                 'Rahul Sharma',2500.00,'O','First order'),
+                (1002,'2026-01-10','2026-01-20','C002',
+                 'Priya Singh',4500.00,'O','Bulk order'),
+                (1003,'2026-01-15','2026-01-25','C003',
+                 'Amit Kumar',1200.00,'C','Closed order'),
+                (1004,'2026-02-01','2026-02-10','C004',
+                 'Sneha Patel',3200.00,'O','Regular order'),
+                (1005,'2026-02-05','2026-02-15','C005',
+                 'Vikram Nair',5000.00,'O','Large order'),
+                (1006,'2026-02-10','2026-02-20','C006',
+                 'Deepa Reddy',1800.00,'C','Completed'),
+                (1007,'2026-03-01','2026-03-10','C007',
+                 'Suresh Kumar',2200.00,'O','New order'),
+                (1008,'2026-03-05','2026-03-15','C008',
+                 'Anita Desai',3800.00,'O','Priority order'),
+                (1009,'2026-03-10','2026-03-20','C009',
+                 'Rajesh Verma',1500.00,'C','Closed'),
+                (1010,'2026-03-15','2026-03-25','C010',
+                 'Meena Iyer',4200.00,'O','Express order')
+            """))
+
+            db.commit()
+
+            # Get DocEntry values
+            result = db.execute(text(
+                'SELECT "DocEntry" FROM "ORDR" ORDER BY "DocEntry"'
+            ))
+            entries = [row[0] for row in result.fetchall()]
+
+            # Insert Order Lines
+            db.execute(text(f"""
+                INSERT INTO "RDR1" 
+                ("DocEntry","ItemCode","ItemName",
+                 "Quantity","Price","LineTotal") 
+                VALUES
+                ({entries[0]},'I001','Laptop',1,1500.00,1500.00),
+                ({entries[0]},'I002','Mouse',5,200.00,1000.00),
+                ({entries[1]},'I003','Keyboard',3,500.00,1500.00),
+                ({entries[1]},'I004','Monitor',2,1500.00,3000.00),
+                ({entries[2]},'I005','Headphones',2,600.00,1200.00),
+                ({entries[3]},'I001','Laptop',2,1500.00,3000.00),
+                ({entries[3]},'I002','Mouse',1,200.00,200.00),
+                ({entries[4]},'I003','Keyboard',5,500.00,2500.00),
+                ({entries[4]},'I004','Monitor',1,1500.00,1500.00),
+                ({entries[5]},'I005','Headphones',3,600.00,1800.00),
+                ({entries[6]},'I001','Laptop',1,1500.00,1500.00),
+                ({entries[6]},'I002','Mouse',2,200.00,400.00),
+                ({entries[6]},'I003','Keyboard',1,500.00,500.00),
+                ({entries[7]},'I004','Monitor',2,1500.00,3000.00),
+                ({entries[7]},'I005','Headphones',1,600.00,600.00),
+                ({entries[8]},'I001','Laptop',1,1500.00,1500.00),
+                ({entries[9]},'I002','Mouse',3,200.00,600.00),
+                ({entries[9]},'I003','Keyboard',2,500.00,1000.00),
+                ({entries[9]},'I004','Monitor',1,1500.00,1500.00),
+                ({entries[9]},'I005','Headphones',2,600.00,1200.00)
+            """))
+
+            db.commit()
+            print("✅ SAP sample data added!")
+        else:
+            print("✅ SAP data already exists!")
+
+    except Exception as e:
+        print(f"Error setting up SAP tables: {e}")
+        db.rollback()
+    finally:
+        db.close()
+
+# Run on startup
+setup_sap_tables()
+
+# ─────────────────────────────────────────────
 # 👤 ADD SAMPLE CUSTOMERS ON STARTUP
 # ─────────────────────────────────────────────
 def add_sample_customers():

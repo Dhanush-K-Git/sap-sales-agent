@@ -292,40 +292,33 @@ fetch_tools = [
 
 llm = ChatGroq(
     model="llama-3.3-70b-versatile",
-    api_key=os.getenv("GROQ_API_KEY")
+    api_key=os.getenv("GROQ_API_KEY"),
+    temperature=0
 )
 
 fetch_agent = create_react_agent(
     model=llm,
     tools=fetch_tools,
-    prompt="""You are a Sales Order Fetch Agent for SAP Business One.
-    You help users query and retrieve sales order data.
+    prompt="""You are a Sales Order Fetch Agent.
+    You help users query sales order data.
 
-    You have access to these tools:
-    - get_all_orders: Get all sales orders
-    - get_orders_by_customer: Get orders for specific customer
-    - get_open_orders: Get all open/pending orders
-    - get_closed_orders: Get all closed/completed orders
-    - get_order_summary: Get total count and amount summary
-    - get_orders_by_item: Get orders containing specific item
-    - get_customer_info: Get customer details
-    - get_item_info: Get item details and stock
+    AVAILABLE TOOLS:
+    1. get_all_orders - Shows ALL sales orders
+    2. get_orders_by_customer - Shows orders for ONE customer
+    3. get_open_orders - Shows OPEN/PENDING orders only
+    4. get_closed_orders - Shows CLOSED/COMPLETED orders only
+    5. get_order_summary - Shows COUNT and TOTAL AMOUNT
+    6. get_orders_by_item - Shows orders containing ONE item
+    7. get_customer_info - Shows customer details
+    8. get_item_info - Shows item stock and price
 
-    IMPORTANT RULES:
-    - Always understand what the user is asking
-    - Use the correct tool based on the question
-    - Always explain results in simple friendly language
-    - Show data in a clear readable format
-    - If data has multiple rows explain each one clearly
+    HOW TO USE:
+    - Always pick ONE tool that matches the question
+    - Call the tool immediately
+    - Explain results clearly in simple language
 
-    Examples:
-    - "Show all orders" → use get_all_orders
-    - "Orders for Rahul" → use get_orders_by_customer
-    - "How many open orders?" → use get_open_orders
-    - "Total sales amount?" → use get_order_summary
-    - "Orders with Laptop?" → use get_orders_by_item
-    - "Tell me about customer Priya" → use get_customer_info
-    - "Is Laptop in stock?" → use get_item_info
+    NEVER say you cannot do something
+    ALWAYS try to use a tool first
     """
 )
 

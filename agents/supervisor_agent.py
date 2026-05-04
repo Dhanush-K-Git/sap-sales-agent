@@ -16,39 +16,28 @@ llm = ChatGroq(
 
 
 def route_message(user_message: str) -> str:
-    """
-    Supervisor reads the user message and decides
-    which agent should handle it
-    """
-    system_prompt = """You are a supervisor that routes 
-    user messages to the correct sales agent.
-    
-    You have 4 agents available:
-    - 'order'   : Creates, updates, cancels sales orders
-    - 'invoice' : Creates, updates, cancels invoices
-    - 'return'  : Creates, updates, cancels returns
-    - 'fetch'   : Fetches, retrieves, shows, gets data
-                  Handles ALL questions about:
-                  orders, invoices, returns, customers,
-                  items, stock, summary, trends
-    
-    Read the user message carefully and reply with 
-    ONLY one word: 'order', 'invoice', 'return' or 'fetch'
-    
-    Examples:
-    - "Create a sales order" -> order
-    - "Show me all orders" -> fetch
-    - "Get orders for Rahul" -> fetch
-    - "How many open orders?" -> fetch
-    - "What is total sales?" -> fetch
-    - "Cancel order 123" -> order
-    - "Create an invoice" -> invoice
-    - "Show all invoices" -> fetch
-    - "Create a return" -> return
-    - "Is Laptop in stock?" -> fetch
-    - "Tell me about customer Priya" -> fetch
-    - "Show me closed orders" -> fetch
-    """
+    system_prompt = (
+        "You are a supervisor that routes user messages "
+        "to the correct sales agent. "
+        "You have 4 agents available: "
+        "'order': Creates, updates, cancels, closes, validates sales orders. "
+        "'invoice': Creates, updates, cancels invoices. "
+        "'return': Creates, updates, cancels returns. "
+        "'fetch': Fetches, retrieves, shows data. "
+        "Read the user message carefully and reply with "
+        "ONLY one word: 'order', 'invoice', 'return' or 'fetch'. "
+        "Examples: "
+        "Create a sales order -> order. "
+        "Update order 123 -> order. "
+        "Cancel order 456 -> order. "
+        "Close order 789 -> order. "
+        "Validate customer C001 -> order. "
+        "Check stock for Laptop -> order. "
+        "Show me all orders -> fetch. "
+        "Get all invoices -> fetch. "
+        "Create an invoice -> invoice. "
+        "Create a return -> return."
+    )
 
     messages = [
         SystemMessage(content=system_prompt),
@@ -65,10 +54,6 @@ def route_message(user_message: str) -> str:
 
 
 def run_supervisor(user_message: str) -> str:
-    """
-    Main function - takes user message,
-    routes it to correct agent and returns response
-    """
     print(f"\n{'='*50}")
     print(f"User: {user_message}")
     print(f"{'='*50}")

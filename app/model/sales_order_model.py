@@ -1,12 +1,11 @@
 from sqlalchemy import Column, Integer, String, Date, Text, DECIMAL, TIMESTAMP, ForeignKey
 from sqlalchemy.sql import func
-from database import Base
+from app.db.base import Base
 
 
 # ─────────────────────────────────────────────
 # 👤 CUSTOMER MODEL
 # ─────────────────────────────────────────────
-
 class Customer(Base):
     __tablename__ = "customers"
 
@@ -20,9 +19,8 @@ class Customer(Base):
 
 
 # ─────────────────────────────────────────────
-# 📦 SALES ORDER MODELS
+# 📦 SALES ORDER MODEL
 # ─────────────────────────────────────────────
-
 class SalesOrder(Base):
     __tablename__ = "sales_orders"
 
@@ -46,9 +44,8 @@ class SalesOrderLine(Base):
 
 
 # ─────────────────────────────────────────────
-# 🧾 SALES INVOICE MODELS
+# 🧾 SALES INVOICE MODEL
 # ─────────────────────────────────────────────
-
 class SalesInvoice(Base):
     __tablename__ = "sales_invoices"
 
@@ -71,9 +68,8 @@ class SalesInvoiceLine(Base):
 
 
 # ─────────────────────────────────────────────
-# 🔄 SALES RETURN MODELS
+# 🔄 SALES RETURN MODEL
 # ─────────────────────────────────────────────
-
 class SalesReturn(Base):
     __tablename__ = "sales_returns"
 

@@ -2,10 +2,10 @@ from pydantic import BaseModel
 from typing import List, Optional
 from datetime import date
 
+
 # ─────────────────────────────────────────────
 # 👤 CUSTOMER SCHEMAS
 # ─────────────────────────────────────────────
-
 class CustomerResponse(BaseModel):
     id: int
     CardCode: str
@@ -21,7 +21,6 @@ class CustomerResponse(BaseModel):
 # ─────────────────────────────────────────────
 # 📦 SALES ORDER SCHEMAS
 # ─────────────────────────────────────────────
-
 class SalesOrderLineSchema(BaseModel):
     ItemCode: str
     Quantity: int
@@ -59,7 +58,6 @@ class SalesOrderResponse(BaseModel):
 # ─────────────────────────────────────────────
 # 🧾 SALES INVOICE SCHEMAS
 # ─────────────────────────────────────────────
-
 class SalesInvoiceLineSchema(BaseModel):
     ItemCode: str
     Quantity: int
@@ -94,7 +92,6 @@ class SalesInvoiceResponse(BaseModel):
 # ─────────────────────────────────────────────
 # 🔄 SALES RETURN SCHEMAS
 # ─────────────────────────────────────────────
-
 class SalesReturnLineSchema(BaseModel):
     ItemCode: str
     Quantity: int

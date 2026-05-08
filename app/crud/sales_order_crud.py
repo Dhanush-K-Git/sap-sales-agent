@@ -1,11 +1,11 @@
 from sqlalchemy.orm import Session
-from models import (
+from app.model.sales_order_model import (
     Customer,
     SalesOrder, SalesOrderLine,
     SalesInvoice, SalesInvoiceLine,
     SalesReturn, SalesReturnLine
 )
-from schemas import (
+from app.schema.sales_order_schema import (
     SalesOrderCreate, SalesOrderUpdate,
     SalesInvoiceCreate, SalesInvoiceUpdate,
     SalesReturnCreate, SalesReturnUpdate
@@ -15,14 +15,11 @@ from schemas import (
 # ─────────────────────────────────────────────
 # 👤 CUSTOMER CRUD
 # ─────────────────────────────────────────────
-
 def get_all_customers(db: Session):
-    """Get all customers"""
     return db.query(Customer).all()
 
 
 def get_customer(db: Session, card_code: str):
-    """Get a specific customer by CardCode"""
     return db.query(Customer).filter(
         Customer.card_code == card_code
     ).first()
@@ -31,9 +28,7 @@ def get_customer(db: Session, card_code: str):
 # ─────────────────────────────────────────────
 # 📦 SALES ORDER CRUD
 # ─────────────────────────────────────────────
-
 def create_order(db: Session, order: SalesOrderCreate):
-    """Create a new sales order"""
     db_order = SalesOrder(
         card_code=order.CardCode,
         doc_date=order.DocDate,
@@ -57,20 +52,17 @@ def create_order(db: Session, order: SalesOrderCreate):
 
 
 def get_order(db: Session, order_id: int):
-    """Get a specific sales order"""
     return db.query(SalesOrder).filter(
         SalesOrder.id == order_id
     ).first()
 
 
 def get_all_orders(db: Session):
-    """Get all sales orders"""
     return db.query(SalesOrder).all()
 
 
 def update_order(db: Session, order_id: int,
                   order: SalesOrderUpdate):
-    """Update a sales order"""
     db_order = db.query(SalesOrder).filter(
         SalesOrder.id == order_id
     ).first()
@@ -85,18 +77,16 @@ def update_order(db: Session, order_id: int,
 
 
 def delete_order(db: Session, order_id: int):
-    """Delete a sales order"""
     db_order = db.query(SalesOrder).filter(
         SalesOrder.id == order_id
     ).first()
     if db_order:
         db.delete(db_order)
         db.commit()
-    return {"message": f"Order {order_id} deleted successfully"}
+    return {"message": f"Order {order_id} deleted!"}
 
 
 def cancel_order(db: Session, order_id: int):
-    """Cancel a sales order"""
     db_order = db.query(SalesOrder).filter(
         SalesOrder.id == order_id
     ).first()
@@ -104,11 +94,10 @@ def cancel_order(db: Session, order_id: int):
         db_order.status = "cancelled"
         db.commit()
         db.refresh(db_order)
-    return {"message": f"Order {order_id} cancelled successfully"}
+    return {"message": f"Order {order_id} cancelled!"}
 
 
 def close_order(db: Session, order_id: int):
-    """Close a sales order"""
     db_order = db.query(SalesOrder).filter(
         SalesOrder.id == order_id
     ).first()
@@ -116,15 +105,14 @@ def close_order(db: Session, order_id: int):
         db_order.status = "closed"
         db.commit()
         db.refresh(db_order)
-    return {"message": f"Order {order_id} closed successfully"}
+    return {"message": f"Order {order_id} closed!"}
 
 
 # ─────────────────────────────────────────────
 # 🧾 SALES INVOICE CRUD
 # ─────────────────────────────────────────────
-
-def create_invoice(db: Session, invoice: SalesInvoiceCreate):
-    """Create a new sales invoice"""
+def create_invoice(db: Session,
+                    invoice: SalesInvoiceCreate):
     db_invoice = SalesInvoice(
         card_code=invoice.CardCode,
         comments=invoice.Comments
@@ -147,20 +135,17 @@ def create_invoice(db: Session, invoice: SalesInvoiceCreate):
 
 
 def get_invoice(db: Session, invoice_id: int):
-    """Get a specific sales invoice"""
     return db.query(SalesInvoice).filter(
         SalesInvoice.id == invoice_id
     ).first()
 
 
 def get_all_invoices(db: Session):
-    """Get all sales invoices"""
     return db.query(SalesInvoice).all()
 
 
 def update_invoice(db: Session, invoice_id: int,
                     invoice: SalesInvoiceUpdate):
-    """Update a sales invoice"""
     db_invoice = db.query(SalesInvoice).filter(
         SalesInvoice.id == invoice_id
     ).first()
@@ -175,18 +160,16 @@ def update_invoice(db: Session, invoice_id: int,
 
 
 def delete_invoice(db: Session, invoice_id: int):
-    """Delete a sales invoice"""
     db_invoice = db.query(SalesInvoice).filter(
         SalesInvoice.id == invoice_id
     ).first()
     if db_invoice:
         db.delete(db_invoice)
         db.commit()
-    return {"message": f"Invoice {invoice_id} deleted successfully"}
+    return {"message": f"Invoice {invoice_id} deleted!"}
 
 
 def cancel_invoice(db: Session, invoice_id: int):
-    """Cancel a sales invoice"""
     db_invoice = db.query(SalesInvoice).filter(
         SalesInvoice.id == invoice_id
     ).first()
@@ -194,15 +177,14 @@ def cancel_invoice(db: Session, invoice_id: int):
         db_invoice.status = "cancelled"
         db.commit()
         db.refresh(db_invoice)
-    return {"message": f"Invoice {invoice_id} cancelled successfully"}
+    return {"message": f"Invoice {invoice_id} cancelled!"}
 
 
 # ─────────────────────────────────────────────
 # 🔄 SALES RETURN CRUD
 # ─────────────────────────────────────────────
-
-def create_return(db: Session, sales_return: SalesReturnCreate):
-    """Create a new sales return"""
+def create_return(db: Session,
+                   sales_return: SalesReturnCreate):
     db_return = SalesReturn(
         card_code=sales_return.CardCode,
         comments=sales_return.Comments
@@ -225,20 +207,17 @@ def create_return(db: Session, sales_return: SalesReturnCreate):
 
 
 def get_return(db: Session, return_id: int):
-    """Get a specific sales return"""
     return db.query(SalesReturn).filter(
         SalesReturn.id == return_id
     ).first()
 
 
 def get_all_returns(db: Session):
-    """Get all sales returns"""
     return db.query(SalesReturn).all()
 
 
 def update_return(db: Session, return_id: int,
                    sales_return: SalesReturnUpdate):
-    """Update a sales return"""
     db_return = db.query(SalesReturn).filter(
         SalesReturn.id == return_id
     ).first()
@@ -253,18 +232,16 @@ def update_return(db: Session, return_id: int,
 
 
 def delete_return(db: Session, return_id: int):
-    """Delete a sales return"""
     db_return = db.query(SalesReturn).filter(
         SalesReturn.id == return_id
     ).first()
     if db_return:
         db.delete(db_return)
         db.commit()
-    return {"message": f"Return {return_id} deleted successfully"}
+    return {"message": f"Return {return_id} deleted!"}
 
 
 def cancel_return(db: Session, return_id: int):
-    """Cancel a sales return"""
     db_return = db.query(SalesReturn).filter(
         SalesReturn.id == return_id
     ).first()
@@ -272,4 +249,4 @@ def cancel_return(db: Session, return_id: int):
         db_return.status = "cancelled"
         db.commit()
         db.refresh(db_return)
-    return {"message": f"Return {return_id} cancelled successfully"}
+    return {"message": f"Return {return_id} cancelled!"}

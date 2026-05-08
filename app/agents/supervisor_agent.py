@@ -2,10 +2,10 @@ from langchain_groq import ChatGroq
 from langchain_core.messages import HumanMessage, SystemMessage
 import os
 from dotenv import load_dotenv
-from agents.sales_order_agent import run_sales_order_agent
-from agents.sales_invoice_agent import run_sales_invoice_agent
-from agents.sales_return_agent import run_sales_return_agent
-from agents.fetch_agent import run_fetch_agent
+from app.agents.salesorder.sales_order_agent import run_sales_order_agent
+from app.agents.salesinvoice.sales_invoice_agent import run_sales_invoice_agent
+from app.agents.salesreturn.sales_return_agent import run_sales_return_agent
+from app.agents.salesorder.fetch_agent import run_fetch_agent
 
 load_dotenv()
 
@@ -19,18 +19,16 @@ def route_message(user_message: str) -> str:
     system_prompt = (
         "You are a supervisor that routes user messages "
         "to the correct sales agent. "
-        "You have 4 agents available: "
+        "You have 4 agents: "
         "'order': Creates, updates, cancels, closes, validates sales orders. "
         "'invoice': Creates, updates, cancels invoices. "
         "'return': Creates, updates, cancels returns. "
-        "'fetch': Fetches, retrieves, shows data. "
-        "Read the user message carefully and reply with "
-        "ONLY one word: 'order', 'invoice', 'return' or 'fetch'. "
+        "'fetch': Fetches, retrieves, shows any data. "
+        "Reply with ONLY one word! "
         "Examples: "
         "Create a sales order -> order. "
         "Update order 123 -> order. "
         "Cancel order 456 -> order. "
-        "Close order 789 -> order. "
         "Validate customer C001 -> order. "
         "Check stock for Laptop -> order. "
         "Show me all orders -> fetch. "

@@ -1,18 +1,20 @@
 import requests
+import os
+from dotenv import load_dotenv
+
+load_dotenv()
 
 # ─────────────────────────────────────────────
-# 🌍 LIVE RENDER URL
+# 🌍 BASE URL
 # ─────────────────────────────────────────────
 BASE_URL = "https://sap-sales-agent-1.onrender.com"
 
 
 # ─────────────────────────────────────────────
-# 📦 SALES ORDER TOOLS
+# 📦 SALES ORDER UTILS
 # ─────────────────────────────────────────────
-
 def create_sales_order(card_code: str, doc_date: str,
                         doc_due_date: str, items: list):
-    """Create a new Sales Order"""
     url = f"{BASE_URL}/Orders"
     payload = {
         "CardCode": card_code,
@@ -20,9 +22,9 @@ def create_sales_order(card_code: str, doc_date: str,
         "DocDueDate": doc_due_date,
         "DocumentLines": [
             {
-                "ItemCode": item.get("item_code") or item.get("ItemCode"),
-                "Quantity": item.get("quantity") or item.get("Quantity"),
-                "UnitPrice": item.get("unit_price") or item.get("UnitPrice")
+                "ItemCode": item.get("ItemCode") or item.get("item_code"),
+                "Quantity": item.get("Quantity") or item.get("quantity"),
+                "UnitPrice": item.get("UnitPrice") or item.get("unit_price")
             }
             for item in items
         ]
@@ -35,7 +37,6 @@ def create_sales_order(card_code: str, doc_date: str,
 
 
 def get_sales_order(order_id: int):
-    """Get a specific Sales Order by ID"""
     url = f"{BASE_URL}/Orders({order_id})"
     try:
         response = requests.get(url)
@@ -45,7 +46,6 @@ def get_sales_order(order_id: int):
 
 
 def get_all_sales_orders():
-    """Get all Sales Orders"""
     url = f"{BASE_URL}/Orders"
     try:
         response = requests.get(url)
@@ -55,61 +55,55 @@ def get_all_sales_orders():
 
 
 def update_sales_order(order_id: int, comments: str):
-    """Update a Sales Order"""
     url = f"{BASE_URL}/Orders({order_id})"
     payload = {"Comments": comments}
     try:
         response = requests.patch(url, json=payload)
-        return {"message": f"Order {order_id} updated successfully"}
+        return {"message": f"Order {order_id} updated!"}
     except Exception as e:
         return {"error": str(e)}
 
 
 def cancel_sales_order(order_id: int):
-    """Cancel a Sales Order"""
     url = f"{BASE_URL}/Orders({order_id})/Cancel"
     try:
         response = requests.post(url)
-        return {"message": f"Order {order_id} cancelled successfully"}
+        return {"message": f"Order {order_id} cancelled!"}
     except Exception as e:
         return {"error": str(e)}
 
 
 def close_sales_order(order_id: int):
-    """Close a Sales Order"""
     url = f"{BASE_URL}/Orders({order_id})/Close"
     try:
         response = requests.post(url)
-        return {"message": f"Order {order_id} closed successfully"}
+        return {"message": f"Order {order_id} closed!"}
     except Exception as e:
         return {"error": str(e)}
 
 
 def delete_sales_order(order_id: int):
-    """Delete a Sales Order"""
     url = f"{BASE_URL}/Orders({order_id})"
     try:
         response = requests.delete(url)
-        return {"message": f"Order {order_id} deleted successfully"}
+        return {"message": f"Order {order_id} deleted!"}
     except Exception as e:
         return {"error": str(e)}
 
 
 # ─────────────────────────────────────────────
-# 🧾 SALES INVOICE TOOLS
+# 🧾 SALES INVOICE UTILS
 # ─────────────────────────────────────────────
-
 def create_sales_invoice(card_code: str, items: list):
-    """Create a new Sales Invoice"""
     url = f"{BASE_URL}/Invoices"
     payload = {
         "CardCode": card_code,
         "DocumentLines": [
             {
-                "ItemCode": item.get("item_code") or item.get("ItemCode"),
-                "Quantity": item.get("quantity") or item.get("Quantity"),
-                "TaxCode": item.get("tax_code") or item.get("TaxCode"),
-                "UnitPrice": item.get("unit_price") or item.get("UnitPrice")
+                "ItemCode": item.get("ItemCode") or item.get("item_code"),
+                "Quantity": item.get("Quantity") or item.get("quantity"),
+                "TaxCode": item.get("TaxCode") or item.get("tax_code"),
+                "UnitPrice": item.get("UnitPrice") or item.get("unit_price")
             }
             for item in items
         ]
@@ -122,7 +116,6 @@ def create_sales_invoice(card_code: str, items: list):
 
 
 def get_sales_invoice(invoice_id: int):
-    """Get a specific Sales Invoice by ID"""
     url = f"{BASE_URL}/Invoices({invoice_id})"
     try:
         response = requests.get(url)
@@ -132,7 +125,6 @@ def get_sales_invoice(invoice_id: int):
 
 
 def get_all_sales_invoices():
-    """Get all Sales Invoices"""
     url = f"{BASE_URL}/Invoices"
     try:
         response = requests.get(url)
@@ -142,51 +134,46 @@ def get_all_sales_invoices():
 
 
 def update_sales_invoice(invoice_id: int, comments: str):
-    """Update a Sales Invoice"""
     url = f"{BASE_URL}/Invoices({invoice_id})"
     payload = {"Comments": comments}
     try:
         response = requests.patch(url, json=payload)
-        return {"message": f"Invoice {invoice_id} updated successfully"}
+        return {"message": f"Invoice {invoice_id} updated!"}
     except Exception as e:
         return {"error": str(e)}
 
 
 def cancel_sales_invoice(invoice_id: int):
-    """Cancel a Sales Invoice"""
     url = f"{BASE_URL}/Invoices({invoice_id})/Cancel"
     try:
         response = requests.post(url)
-        return {"message": f"Invoice {invoice_id} cancelled successfully"}
+        return {"message": f"Invoice {invoice_id} cancelled!"}
     except Exception as e:
         return {"error": str(e)}
 
 
 def delete_sales_invoice(invoice_id: int):
-    """Delete a Sales Invoice"""
     url = f"{BASE_URL}/Invoices({invoice_id})"
     try:
         response = requests.delete(url)
-        return {"message": f"Invoice {invoice_id} deleted successfully"}
+        return {"message": f"Invoice {invoice_id} deleted!"}
     except Exception as e:
         return {"error": str(e)}
 
 
 # ─────────────────────────────────────────────
-# 🔄 SALES RETURN TOOLS
+# 🔄 SALES RETURN UTILS
 # ─────────────────────────────────────────────
-
 def create_sales_return(card_code: str, items: list):
-    """Create a new Sales Return"""
     url = f"{BASE_URL}/Returns"
     payload = {
         "CardCode": card_code,
         "DocumentLines": [
             {
-                "ItemCode": item.get("item_code") or item.get("ItemCode"),
-                "Quantity": item.get("quantity") or item.get("Quantity"),
-                "TaxCode": item.get("tax_code") or item.get("TaxCode"),
-                "UnitPrice": item.get("unit_price") or item.get("UnitPrice")
+                "ItemCode": item.get("ItemCode") or item.get("item_code"),
+                "Quantity": item.get("Quantity") or item.get("quantity"),
+                "TaxCode": item.get("TaxCode") or item.get("tax_code"),
+                "UnitPrice": item.get("UnitPrice") or item.get("unit_price")
             }
             for item in items
         ]
@@ -199,7 +186,6 @@ def create_sales_return(card_code: str, items: list):
 
 
 def get_sales_return(return_id: int):
-    """Get a specific Sales Return by ID"""
     url = f"{BASE_URL}/Returns({return_id})"
     try:
         response = requests.get(url)
@@ -209,7 +195,6 @@ def get_sales_return(return_id: int):
 
 
 def get_all_sales_returns():
-    """Get all Sales Returns"""
     url = f"{BASE_URL}/Returns"
     try:
         response = requests.get(url)
@@ -219,55 +204,43 @@ def get_all_sales_returns():
 
 
 def update_sales_return(return_id: int, comments: str):
-    """Update a Sales Return"""
     url = f"{BASE_URL}/Returns({return_id})"
     payload = {"Comments": comments}
     try:
         response = requests.patch(url, json=payload)
-        return {"message": f"Return {return_id} updated successfully"}
+        return {"message": f"Return {return_id} updated!"}
     except Exception as e:
         return {"error": str(e)}
 
 
 def cancel_sales_return(return_id: int):
-    """Cancel a Sales Return"""
     url = f"{BASE_URL}/Returns({return_id})/Cancel"
     try:
         response = requests.post(url)
-        return {"message": f"Return {return_id} cancelled successfully"}
+        return {"message": f"Return {return_id} cancelled!"}
     except Exception as e:
         return {"error": str(e)}
 
 
 def delete_sales_return(return_id: int):
-    """Delete a Sales Return"""
     url = f"{BASE_URL}/Returns({return_id})"
     try:
         response = requests.delete(url)
-        return {"message": f"Return {return_id} deleted successfully"}
+        return {"message": f"Return {return_id} deleted!"}
     except Exception as e:
         return {"error": str(e)}
 
 
-        # ─────────────────────────────────────────────
-# 👤 CUSTOMER TOOLS
 # ─────────────────────────────────────────────
-
-def get_all_customers():
-    """Get all customers"""
-    url = f"{BASE_URL}/customers"
+# 🔍 QUERY UTILS
+# ─────────────────────────────────────────────
+def execute_query(sql: str):
+    """Execute SQL query via API"""
     try:
-        response = requests.get(url)
-        return response.json()
-    except Exception as e:
-        return {"error": str(e)}
-
-
-def get_customer(card_code: str):
-    """Get a specific customer"""
-    url = f"{BASE_URL}/customers/{card_code}"
-    try:
-        response = requests.get(url)
+        response = requests.get(
+            f"{BASE_URL}/query",
+            params={"sql": sql}
+        )
         return response.json()
     except Exception as e:
         return {"error": str(e)}

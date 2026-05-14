@@ -1,6 +1,11 @@
 import os
-from dotenv import load_dotenv
-from app.agents.supervisor_agent import run_supervisor
+from langchain_groq import ChatGroq
+
+llm = ChatGroq(
+    temperature=0, 
+    groq_api_key=os.getenv("GROQ_API_KEY"), 
+    model_name="llama-3.3-70b-versatile" # or "llama3-8b-8192"
+)
 
 load_dotenv()
 

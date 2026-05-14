@@ -1,3 +1,4 @@
+from app.api.generate_sql_api import router as sql_router
 from fastapi import FastAPI, Depends, HTTPException
 from sqlalchemy.orm import Session
 from sqlalchemy import text
@@ -272,6 +273,7 @@ app = FastAPI(
 app.include_router(order_router)
 app.include_router(invoice_router)
 app.include_router(return_router)
+app.include_router(sql_router)
 
 
 @app.get("/")

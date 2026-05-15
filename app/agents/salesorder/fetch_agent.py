@@ -1,3 +1,8 @@
+# Add this import at the top of fetch_agent.py
+from app.operations.schema_rag import get_schema_from_rag
+from app.operations.utils import execute_query
+import psycopg2
+import os
 from langchain_groq import ChatGroq
 from langchain_core.tools import tool
 from langchain_core.messages import HumanMessage
@@ -132,8 +137,65 @@ def get_order_summary() -> dict:
     """
     return execute_query(sql)
 
+@tool
+def text_to_sql_with_rag(question: str) -> dict:
+    """
+    Use this for ANY complex or custom question not covered by
+    the other tools. Uses RAG to find relevant schema, then
+    generates and runs the correct SQL automatically.
+    question: Any natural language question about sales data
+    """
+    try:
+        # STEP 1 — RAG: find relevant schema for this question
+        schema_context = get_schema_from_rag(question)
+
+        # STEP 2 — LLM: generate SQL from question + schema
+        from langchain_groq import ChatGroq
+        from langchain_core.messages import HumanMessage, SystemMessage
+
+        sql_llm = ChatGroq(
+            model="llama-3.3-70b-versatile",
+            api_key=os.getenv("GROQ_API_KEY"),
+            temperature=0
+        )
+
+        prompt = f"""You are a PostgreSQL expert.
+Generate ONLY a valid SQL SELECT query. No explanation, no markdown, no backticks.
+
+DATABASE SCHEMA (relevant tables and columns):
+{schema_context}
+
+IMPORTANT RULES:
+- All table and column names MUST be in double quotes e.g. "ORDR", "CardName"
+- Use ILIKE for case-insensitive text search
+- Always use SELECT, never INSERT/UPDATE/DELETE
+- For joins: ORDR joins RDR1 on "DocEntry"
+- For joins: OCRD has customer info (CardCode, CardName)
+
+USER QUESTION: {question}
+
+SQL QUERY:"""
+
+        response = sql_llm.invoke([HumanMessage(content=prompt)])
+        generated_sql = response.content.strip()
+
+        # Clean up if LLM adds backticks anyway
+        generated_sql = generated_sql.replace("```sql", "").replace("```", "").strip()
+
+        print(f"\n[RAG] Generated SQL:\n{generated_sql}\n")
+
+        # STEP 3 — Execute the generated SQL
+        result = execute_query(generated_sql)
+        result["generated_sql"] = generated_sql
+        result["schema_used"] = schema_context
+        return result
+
+    except Exception as e:
+        return {"error": str(e)}
+
 
 fetch_tools = [
+    text_to_sql_with_rag,    # ← RAG-powered text-to-SQL (for complex questions)
     get_all_customers,
     get_customer_info,
     get_all_items,
@@ -150,20 +212,20 @@ fetch_agent = create_react_agent(
     prompt="""You are Alex, a friendly SAP B1 Sales Assistant at Techative Pvt Ltd Solutions.
 
 TOOLS AND WHEN TO USE THEM:
-- get_all_customers      → "list customers", "show all customers", "who are our customers"
-- get_customer_info      → "tell me about customer X", "details of John"
-- get_all_items          → "list items", "show products", "what do we sell"
+- text_to_sql_with_rag   → complex/custom questions, comparisons, filters, "which customer bought most", "total sales in January" — anything not covered below
+- get_all_customers      → "list customers", "show all customers"
+- get_customer_info      → "details of customer X"
+- get_all_items          → "list items", "show all products"
 - get_item_info          → "price of Laptop", "stock for Mouse"
-- get_all_orders         → "show all orders", "list orders"
+- get_all_orders         → "show all orders"
 - get_orders_by_customer → "orders for customer X"
 - get_open_orders        → "open orders", "pending orders"
-- get_order_summary      → "summary", "statistics", "how many orders"
+- get_order_summary      → "summary", "how many orders total"
 
 RULES:
-- ALWAYS call a tool first before saying you cannot help
-- Never say data is unavailable without trying a tool
+- ALWAYS call a tool — never say data is unavailable without trying
+- For anything complex or analytical → use text_to_sql_with_rag
 - Present results in a clean, friendly format with bullet points
-- If a tool returns an error, show the error message clearly
 """
 )
 

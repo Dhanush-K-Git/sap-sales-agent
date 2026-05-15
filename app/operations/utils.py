@@ -1,3 +1,5 @@
+import psycopg2
+from urllib.parse import urlparse
 import requests
 import os
 from dotenv import load_dotenv
@@ -234,13 +236,20 @@ def delete_sales_return(return_id: int):
 # ─────────────────────────────────────────────
 # 🔍 QUERY UTILS
 # ─────────────────────────────────────────────
-def execute_query(sql: str):
-    """Execute SQL query via API"""
+# QUERY UTILS — connects DIRECTLY to PostgreSQL (no Render API needed)
+def execute_query(sql: str) -> dict:
+    """Execute SQL directly on PostgreSQL — no Render API needed."""
     try:
-        response = requests.get(
-            f"{BASE_URL}/query",
-            params={"sql": sql}
-        )
-        return response.json()
+        conn = psycopg2.connect(os.getenv("DATABASE_URL"))
+        cur = conn.cursor()
+        cur.execute(sql)
+        columns = [desc[0] for desc in cur.description]
+        rows = cur.fetchall()
+        data = [dict(zip(columns, [str(v) if v is not None else None for v in row]))
+                for row in rows]
+        cur.close()
+        conn.close()
+        return {"data": data, "count": len(data)}
     except Exception as e:
         return {"error": str(e)}
+    

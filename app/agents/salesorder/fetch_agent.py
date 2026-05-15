@@ -9,11 +9,6 @@ from app.operations.utils import execute_query
 
 load_dotenv()
 
-BASE_URL = "https://sap-sales-agent-1.onrender.com"
-PRODUCTION_API = "http://vzone.in:1662/api/GetMethod/GetData"
-
-# 🤖 LLM SETUP ← THIS MUST BE HERE!
-# ─────────────────────────────────────────────
 llm = ChatGroq(
     model="llama-3.3-70b-versatile",
     api_key=os.getenv("GROQ_API_KEY"),
@@ -21,202 +16,160 @@ llm = ChatGroq(
 )
 
 
-# ─────────────────────────────────────────────
-# 🔧 FETCH TOOLS
-# ─────────────────────────────────────────────
-
 @tool
-def text_to_sql_query(question: str) -> dict:
-    """
-    Convert natural language to SQL and fetch
-    from production SAP B1 database.
-    question: Any question about sales data
-    """
-    try:
-        response = requests.post(
-            f"{BASE_URL}/generate-sql/",
-            params={"query": question}
-        )
-        return response.json()
-    except Exception as e:
-        return {"error": str(e)}
-
-
-@tool
-def get_all_orders() -> dict:
-    """Get all sales orders."""
+def get_all_customers() -> dict:
+    """Get the complete list of all customers."""
     sql = """
-        SELECT 
-            ORDR.DocNum as order_number,
-            ORDR.DocDate as date,
-            ORDR.CardName as customer_name,
-            ORDR.DocTotal as total,
-            ORDR.DocStatus as status,
-            RDR1.ItemName as item_name,
-            RDR1.Quantity as quantity,
-            RDR1.Price as price
-        FROM ORDR
-        JOIN RDR1 ON ORDR.DocEntry = RDR1.DocEntry
-        ORDER BY ORDR.DocNum
-    """
-    return execute_query(sql)
-
-
-@tool
-def get_orders_by_customer(customer_name: str) -> dict:
-    """
-    Get orders for a specific customer.
-    customer_name: Customer name to search
-    """
-    sql = f"""
-        SELECT 
-            ORDR.DocNum as order_number,
-            ORDR.DocDate as date,
-            ORDR.CardName as customer_name,
-            ORDR.DocTotal as total,
-            ORDR.DocStatus as status,
-            RDR1.ItemName as item_name,
-            RDR1.Quantity as quantity
-        FROM ORDR
-        JOIN RDR1 ON ORDR.DocEntry = RDR1.DocEntry
-        WHERE ORDR.CardName LIKE '%{customer_name}%'
-        ORDER BY ORDR.DocNum
-    """
-    return execute_query(sql)
-
-
-@tool
-def get_open_orders() -> dict:
-    """Get all open sales orders."""
-    sql = """
-        SELECT 
-            ORDR.DocNum as order_number,
-            ORDR.DocDate as date,
-            ORDR.CardName as customer_name,
-            ORDR.DocTotal as total,
-            RDR1.ItemName as item_name,
-            RDR1.Quantity as quantity
-        FROM ORDR
-        JOIN RDR1 ON ORDR.DocEntry = RDR1.DocEntry
-        WHERE ORDR.DocStatus = 'O'
-        ORDER BY ORDR.DocNum
-    """
-    return execute_query(sql)
-
-
-@tool
-def get_order_summary() -> dict:
-    """Get summary statistics of all orders."""
-    sql = """
-        SELECT 
-            COUNT(*) as total_orders,
-            SUM(DocTotal) as total_amount,
-            COUNT(CASE WHEN DocStatus='O' 
-                  THEN 1 END) as open_orders,
-            COUNT(CASE WHEN DocStatus='C' 
-                  THEN 1 END) as closed_orders
-        FROM ORDR
+        SELECT "CardCode", "CardName", "Phone", "Email", "CreditLimit", "Balance"
+        FROM "OCRD"
+        ORDER BY "CardCode"
     """
     return execute_query(sql)
 
 
 @tool
 def get_customer_info(customer_name: str) -> dict:
-    """
-    Get customer details.
-    customer_name: Customer name
-    """
+    """Get details for a specific customer by name."""
     sql = f"""
-        SELECT 
-            CardCode, CardName,
-            Phone, Email,
-            CreditLimit, Balance
-        FROM OCRD
-        WHERE CardName LIKE '%{customer_name}%'
+        SELECT "CardCode", "CardName", "Phone", "Email", "CreditLimit", "Balance"
+        FROM "OCRD"
+        WHERE "CardName" ILIKE '%{customer_name}%'
+    """
+    return execute_query(sql)
+
+
+@tool
+def get_all_items() -> dict:
+    """Get the complete list of all items/products."""
+    sql = """
+        SELECT "ItemCode", "ItemName", "Price", "Stock", "ItemGroup"
+        FROM "OITM"
+        ORDER BY "ItemCode"
     """
     return execute_query(sql)
 
 
 @tool
 def get_item_info(item_name: str) -> dict:
-    """
-    Get item stock and price.
-    item_name: Item name
-    """
+    """Get stock and price for a specific item by name."""
     sql = f"""
-        SELECT 
-            ItemCode, ItemName,
-            Price, Stock, ItemGroup
-        FROM OITM
-        WHERE ItemName LIKE '%{item_name}%'
+        SELECT "ItemCode", "ItemName", "Price", "Stock", "ItemGroup"
+        FROM "OITM"
+        WHERE "ItemName" ILIKE '%{item_name}%'
     """
     return execute_query(sql)
 
 
-# ─────────────────────────────────────────────
-# 🤖 BUILD FETCH AGENT WITH OLLAMA
-# ─────────────────────────────────────────────
-# ─────────────────────────────────────────────
-# 🤖 BUILD FETCH AGENT
-# ─────────────────────────────────────────────
+@tool
+def get_all_orders() -> dict:
+    """Get all sales orders with customer and item details."""
+    sql = """
+        SELECT
+            o."DocNum"  AS order_number,
+            o."DocDate" AS date,
+            o."CardName" AS customer_name,
+            o."DocTotal" AS total,
+            o."DocStatus" AS status,
+            l."ItemName" AS item_name,
+            l."Quantity" AS quantity,
+            l."Price"    AS price
+        FROM "ORDR" o
+        JOIN "RDR1" l ON o."DocEntry" = l."DocEntry"
+        ORDER BY o."DocNum"
+    """
+    return execute_query(sql)
+
+
+@tool
+def get_orders_by_customer(customer_name: str) -> dict:
+    """Get all orders for a specific customer by name."""
+    sql = f"""
+        SELECT
+            o."DocNum"   AS order_number,
+            o."DocDate"  AS date,
+            o."CardName" AS customer_name,
+            o."DocTotal" AS total,
+            o."DocStatus" AS status,
+            l."ItemName" AS item_name,
+            l."Quantity" AS quantity
+        FROM "ORDR" o
+        JOIN "RDR1" l ON o."DocEntry" = l."DocEntry"
+        WHERE o."CardName" ILIKE '%{customer_name}%'
+        ORDER BY o."DocNum"
+    """
+    return execute_query(sql)
+
+
+@tool
+def get_open_orders() -> dict:
+    """Get all open (pending) sales orders."""
+    sql = """
+        SELECT
+            o."DocNum"   AS order_number,
+            o."DocDate"  AS date,
+            o."CardName" AS customer_name,
+            o."DocTotal" AS total,
+            l."ItemName" AS item_name,
+            l."Quantity" AS quantity
+        FROM "ORDR" o
+        JOIN "RDR1" l ON o."DocEntry" = l."DocEntry"
+        WHERE o."DocStatus" = 'O'
+        ORDER BY o."DocNum"
+    """
+    return execute_query(sql)
+
+
+@tool
+def get_order_summary() -> dict:
+    """Get total count and value statistics for all orders."""
+    sql = """
+        SELECT
+            COUNT(*) AS total_orders,
+            SUM("DocTotal") AS total_amount,
+            COUNT(CASE WHEN "DocStatus"='O' THEN 1 END) AS open_orders,
+            COUNT(CASE WHEN "DocStatus"='C' THEN 1 END) AS closed_orders
+        FROM "ORDR"
+    """
+    return execute_query(sql)
+
+
 fetch_tools = [
-    text_to_sql_query,
+    get_all_customers,
+    get_customer_info,
+    get_all_items,
+    get_item_info,
     get_all_orders,
     get_orders_by_customer,
     get_open_orders,
     get_order_summary,
-    get_customer_info,
-    get_item_info
 ]
-
-# app/agents/salesorder/fetch_agent.py (and update_agent.py)
-
-llm = ChatGroq(
-    model="llama-3.3-70b-versatile",
-    api_key=os.getenv("GROQ_API_KEY"),
-    temperature=0
-)
-
-# Standardize the return to a string to match the Supervisor's expectations
-def run_fetch_agent(user_message: str) -> str:
-    result = fetch_agent.invoke({
-        "messages": [HumanMessage(content=user_message)]
-    })
-    return result["messages"][-1].content
 
 fetch_agent = create_react_agent(
     model=llm,
     tools=fetch_tools,
-    prompt="""You are Alex, a friendly and knowledgeable 
-    SAP B1 Sales Assistant at Techative Pvt Ltd Solutions.
+    prompt="""You are Alex, a friendly SAP B1 Sales Assistant at Techative Pvt Ltd Solutions.
 
-    You help users understand their sales data in a 
-    conversational, human-like way just like ChatGPT!
+TOOLS AND WHEN TO USE THEM:
+- get_all_customers      → "list customers", "show all customers", "who are our customers"
+- get_customer_info      → "tell me about customer X", "details of John"
+- get_all_items          → "list items", "show products", "what do we sell"
+- get_item_info          → "price of Laptop", "stock for Mouse"
+- get_all_orders         → "show all orders", "list orders"
+- get_orders_by_customer → "orders for customer X"
+- get_open_orders        → "open orders", "pending orders"
+- get_order_summary      → "summary", "statistics", "how many orders"
 
-    YOUR PERSONALITY:
-    - Friendly and professional 😊
-    - Always greet and acknowledge the user
-    - Explain data in simple terms
-    - Use bullet points for lists
-    - Add context and insights to data
-    - Never just dump raw data
-
-    TOOLS YOU HAVE:
-    1. text_to_sql_query - For complex questions
-    2. get_all_orders - Get ALL sales orders
-    3. get_orders_by_customer - Orders for ONE customer
-    4. get_open_orders - OPEN orders only
-    5. get_order_summary - Statistics and totals
-    6. get_customer_info - Customer details
-    7. get_item_info - Item stock and price
-
-    Always explain results in a friendly way!
-    """
+RULES:
+- ALWAYS call a tool first before saying you cannot help
+- Never say data is unavailable without trying a tool
+- Present results in a clean, friendly format with bullet points
+- If a tool returns an error, show the error message clearly
+"""
 )
 
 
 def run_fetch_agent(user_message: str) -> str:
-    """Run the fetch agent with user message"""
+    """Run the fetch agent with user message."""
     result = fetch_agent.invoke({
         "messages": [HumanMessage(content=user_message)]
     })

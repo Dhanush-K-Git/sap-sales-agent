@@ -1,9 +1,8 @@
 # Add this import at the top of fetch_agent.py
+from app.operations.llm_config import llm_fetch as llm
+from app.operations.sap_client import sap_get # You'll need to add a GET function to sap_client.py
 from app.operations.schema_rag import get_schema_from_rag
-from app.operations.utils import execute_query
-import psycopg2
 import os
-from langchain_groq import ChatGroq
 from langchain_core.tools import tool
 from langchain_core.messages import HumanMessage
 from langgraph.prebuilt import create_react_agent
@@ -14,11 +13,7 @@ from app.operations.utils import execute_query
 
 load_dotenv()
 
-llm = ChatGroq(
-    model="llama-3.3-70b-versatile",
-    api_key=os.getenv("GROQ_API_KEY"),
-    temperature=0
-)
+from app.operations.llm_config import llm_fetch
 
 
 @tool

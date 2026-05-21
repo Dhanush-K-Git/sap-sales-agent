@@ -1,4 +1,4 @@
-from langchain_groq import ChatGroq
+from app.operations.llm_config import llm_validate as llm
 from langchain_core.tools import tool
 from langchain_core.messages import HumanMessage
 from langgraph.prebuilt import create_react_agent
@@ -12,27 +12,21 @@ load_dotenv()
 @tool
 def validate_customer(card_code: str) -> dict:
     """
-    Validate if customer exists.
-    card_code: Customer code e.g C001
+    Validate if customer exists in SAP B1.
+    card_code: Customer code e.g. C001
     """
-    sql = f"""
-        SELECT "CardCode", "CardName",
-               "CreditLimit", "Balance"
-        FROM "OCRD"
-        WHERE "CardCode" = '{card_code}'
-    """
-    data = execute_query(sql)
-    if data.get("data") and len(data["data"]) > 0:
-        customer = data["data"][0]
+    # Hit the SAP BusinessPartners endpoint instead of writing SQL
+    result = sap_get(f"BusinessPartners('{card_code}')")
+    
+    if result.get("success"):
+        # If SAP returns data, the customer is valid
         return {
             "valid": True,
-            "customer": customer,
-            "message": f"Customer {customer['cardname']} exists!"
+            "card_name": result["data"].get("CardName"),
+            "credit_limit": result["data"].get("CreditLimit")
         }
-    return {
-        "valid": False,
-        "message": f"Customer {card_code} not found!"
-    }
+    else:
+        return {"valid": False, "error": "Customer not found in SAP"}
 
 
 @tool
@@ -118,12 +112,6 @@ validation_tools = [
     validate_credit,
     validate_stock
 ]
-
-llm = ChatGroq(
-    model="llama-3.3-70b-versatile",
-    api_key=os.getenv("GROQ_API_KEY"),
-    temperature=0
-)
 
 validation_agent = create_react_agent(
     model=llm,

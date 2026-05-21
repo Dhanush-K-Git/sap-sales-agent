@@ -1,104 +1,92 @@
-from langchain_groq import ChatGroq
 from langchain_core.tools import tool
 from langchain_core.messages import HumanMessage
 from langgraph.prebuilt import create_react_agent
-import os
-from dotenv import load_dotenv
-from app.operations.utils import (
-    create_sales_return,
-    get_sales_return,
-    get_all_sales_returns,
-    update_sales_return,
-    cancel_sales_return,
-    delete_sales_return
+from app.operations.llm_config import llm_return as llm
+from app.operations.sap_client import (
+    create_sales_return, cancel_sales_return,
+    close_sales_return, reopen_sales_return
 )
-
-load_dotenv()
+from app.operations.utils import execute_query
 
 
 @tool
-def tool_create_sales_return(card_code: str,
-                              items: list) -> dict:
+def tool_create_return(card_code: str, item_codes: list,
+                       quantities: list, unit_prices: list,
+                       tax_codes: list = None) -> dict:
     """
-    Create a new sales return.
+    Create a sales return via SAP B1.
     card_code: Customer code e.g C001
-    items: List with ItemCode, Quantity, TaxCode, UnitPrice
+    item_codes: List e.g ['I001']
+    quantities: List e.g [100]
+    unit_prices: List e.g [50.0]
+    tax_codes: List e.g ['T1'] (optional)
     """
+    if not tax_codes:
+        tax_codes = ["T1"] * len(item_codes)
+    items = [
+        {"ItemCode": ic, "Quantity": q,
+         "UnitPrice": p, "TaxCode": tc}
+        for ic, q, p, tc in zip(item_codes, quantities,
+                                 unit_prices, tax_codes)
+    ]
     return create_sales_return(card_code, items)
 
 
 @tool
-def tool_get_sales_return(return_id: int) -> dict:
-    """
-    Get a specific return by ID.
-    return_id: Return ID number
-    """
-    return get_sales_return(return_id)
+def tool_cancel_return(doc_entry: int) -> dict:
+    """Cancel a sales return. doc_entry: Return DocEntry"""
+    return cancel_sales_return(doc_entry)
 
 
 @tool
-def tool_get_all_sales_returns() -> dict:
-    """Get all sales returns."""
-    return get_all_sales_returns()
+def tool_close_return(doc_entry: int) -> dict:
+    """Close a sales return. doc_entry: Return DocEntry"""
+    return close_sales_return(doc_entry)
 
 
 @tool
-def tool_update_sales_return(return_id: int,
-                              comments: str) -> dict:
-    """
-    Update return comments.
-    return_id: Return ID number
-    comments: New comment text
-    """
-    return update_sales_return(return_id, comments)
+def tool_reopen_return(doc_entry: int) -> dict:
+    """Reopen a sales return. doc_entry: Return DocEntry"""
+    return reopen_sales_return(doc_entry)
 
 
 @tool
-def tool_cancel_sales_return(return_id: int) -> dict:
+def get_all_returns() -> dict:
+    """Get all sales returns from database."""
+    sql = """
+        SELECT "DocNum", "DocDate", "CardName",
+               "DocTotal", "DocStatus"
+        FROM "ORDN"
+        ORDER BY "DocNum" DESC
     """
-    Cancel a sales return.
-    return_id: Return ID number
-    """
-    return cancel_sales_return(return_id)
+    return execute_query(sql)
 
 
-@tool
-def tool_delete_sales_return(return_id: int) -> dict:
-    """
-    Delete a sales return.
-    return_id: Return ID number
-    """
-    return delete_sales_return(return_id)
-
-
-sales_return_tools = [
-    tool_create_sales_return,
-    tool_get_sales_return,
-    tool_get_all_sales_returns,
-    tool_update_sales_return,
-    tool_cancel_sales_return,
-    tool_delete_sales_return
+return_tools = [
+    tool_create_return, tool_cancel_return,
+    tool_close_return, tool_reopen_return,
+    get_all_returns
 ]
 
-llm = ChatGroq(
-    model="llama-3.3-70b-versatile",
-    api_key=os.getenv("GROQ_API_KEY"),
-    temperature=0
-)
-
-sales_return_agent = create_react_agent(
+return_agent = create_react_agent(
     model=llm,
-    tools=sales_return_tools,
-    prompt="""You are a Sales Return Agent for SAP B1.
-    Your job is to manage sales returns.
-    You can create, read, update, cancel and delete returns.
-    Always confirm actions clearly.
-    """
+    tools=return_tools,
+    prompt="""You are a SAP B1 Sales Return specialist at Techative Pvt Ltd.
+
+OPERATIONS:
+- Create return → tool_create_return
+- Cancel return → tool_cancel_return
+- Close return  → tool_close_return
+- Reopen return → tool_reopen_return
+- List returns  → get_all_returns
+
+Always confirm DocEntry after creation.
+Default TaxCode is T1 if not specified."""
 )
 
 
 def run_sales_return_agent(user_message: str) -> str:
-    result = sales_return_agent.invoke({
+    result = return_agent.invoke({
         "messages": [HumanMessage(content=user_message)]
     })
     return result["messages"][-1].content

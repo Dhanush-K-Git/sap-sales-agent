@@ -1,92 +1,47 @@
-from langchain_groq import ChatGroq
 from langchain_core.tools import tool
 from langchain_core.messages import HumanMessage
 from langgraph.prebuilt import create_react_agent
-import os
-import requests
-from dotenv import load_dotenv
-from app.operations.utils import BASE_URL
-
-load_dotenv()
+from app.operations.llm_config import llm_update as llm
+from app.operations.sap_client import update_sales_order
+from app.operations.utils import execute_query
 
 
 @tool
-def get_order_details(order_id: int) -> dict:
+def get_order_details(doc_num: int) -> dict:
+    """Get order details before updating. doc_num: Order number e.g 1001"""
+    sql = f"""
+        SELECT o."DocNum", o."DocEntry", o."CardName",
+               o."DocTotal", o."DocStatus", o."Comments",
+               l."ItemName", l."Quantity", l."Price"
+        FROM "ORDR" o
+        JOIN "RDR1" l ON o."DocEntry" = l."DocEntry"
+        WHERE o."DocNum" = {doc_num}
     """
-    Get order details before updating.
-    order_id: Order ID number
-    """
-    try:
-        url = f"{BASE_URL}/Orders({order_id})"
-        response = requests.get(url)
-        return response.json()
-    except Exception as e:
-        return {"error": str(e)}
+    return execute_query(sql)
 
 
 @tool
-def update_order_comments(order_id: int,
-                           comments: str) -> dict:
+def tool_update_order(doc_entry: int, comments: str) -> dict:
     """
-    Update order comments.
-    order_id: Order ID number
+    Update a sales order comment via SAP B1 API.
+    doc_entry: DocEntry number (from order details)
     comments: New comment text
     """
-    try:
-        url = f"{BASE_URL}/Orders({order_id})"
-        payload = {"Comments": comments}
-        response = requests.patch(url, json=payload)
-        return {
-            "success": True,
-            "message": f"Order {order_id} updated!"
-        }
-    except Exception as e:
-        return {"error": str(e)}
+    return update_sales_order(doc_entry, comments)
 
 
-@tool
-def update_order_status(order_id: int,
-                         status: str) -> dict:
-    """
-    Update order status.
-    order_id: Order ID number
-    status: New status
-    """
-    try:
-        url = f"{BASE_URL}/Orders({order_id})"
-        payload = {"Status": status}
-        response = requests.patch(url, json=payload)
-        return {
-            "success": True,
-            "message": f"Order {order_id} status updated!"
-        }
-    except Exception as e:
-        return {"error": str(e)}
-
-
-update_tools = [
-    get_order_details,
-    update_order_comments,
-    update_order_status
-]
-
-llm = ChatGroq(
-    model="llama-3.3-70b-versatile",
-    api_key=os.getenv("GROQ_API_KEY"),
-    temperature=0
-)
+update_tools = [get_order_details, tool_update_order]
 
 update_agent = create_react_agent(
     model=llm,
     tools=update_tools,
-    prompt="""You are an Update Agent for SAP B1.
-    Your job is to update existing sales orders.
+    prompt="""You are a SAP B1 Sales Order Update specialist at Techative Pvt Ltd.
 
-    WORKFLOW:
-    1. Get order details first
-    2. Make the requested update
-    3. Confirm what was updated
-    """
+WORKFLOW:
+1. get_order_details → always fetch order first, get DocEntry
+2. Show user what the current order looks like
+3. tool_update_order → apply the update using DocEntry
+4. Confirm what was changed"""
 )
 
 

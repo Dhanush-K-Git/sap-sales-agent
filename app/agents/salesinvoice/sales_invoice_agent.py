@@ -1,104 +1,92 @@
-from langchain_groq import ChatGroq
 from langchain_core.tools import tool
 from langchain_core.messages import HumanMessage
 from langgraph.prebuilt import create_react_agent
-import os
-from dotenv import load_dotenv
-from app.operations.utils import (
-    create_sales_invoice,
-    get_sales_invoice,
-    get_all_sales_invoices,
-    update_sales_invoice,
-    cancel_sales_invoice,
-    delete_sales_invoice
+from app.operations.llm_config import llm_invoice as llm
+from app.operations.sap_client import (
+    create_sales_invoice, cancel_sales_invoice,
+    close_sales_invoice, reopen_sales_invoice
 )
-
-load_dotenv()
+from app.operations.utils import execute_query
 
 
 @tool
-def tool_create_sales_invoice(card_code: str,
-                               items: list) -> dict:
+def tool_create_invoice(card_code: str, item_codes: list,
+                        quantities: list, unit_prices: list,
+                        tax_codes: list = None) -> dict:
     """
-    Create a new sales invoice.
+    Create a sales invoice via SAP B1.
     card_code: Customer code e.g C001
-    items: List with ItemCode, Quantity, TaxCode, UnitPrice
+    item_codes: List e.g ['I001']
+    quantities: List e.g [100]
+    unit_prices: List e.g [30.0]
+    tax_codes: List e.g ['T1'] (optional, defaults to T1)
     """
+    if not tax_codes:
+        tax_codes = ["T1"] * len(item_codes)
+    items = [
+        {"ItemCode": ic, "Quantity": q,
+         "UnitPrice": p, "TaxCode": tc}
+        for ic, q, p, tc in zip(item_codes, quantities,
+                                 unit_prices, tax_codes)
+    ]
     return create_sales_invoice(card_code, items)
 
 
 @tool
-def tool_get_sales_invoice(invoice_id: int) -> dict:
-    """
-    Get a specific invoice by ID.
-    invoice_id: Invoice ID number
-    """
-    return get_sales_invoice(invoice_id)
+def tool_cancel_invoice(doc_entry: int) -> dict:
+    """Cancel a sales invoice. doc_entry: Invoice DocEntry"""
+    return cancel_sales_invoice(doc_entry)
 
 
 @tool
-def tool_get_all_sales_invoices() -> dict:
-    """Get all sales invoices."""
-    return get_all_sales_invoices()
+def tool_close_invoice(doc_entry: int) -> dict:
+    """Close a sales invoice. doc_entry: Invoice DocEntry"""
+    return close_sales_invoice(doc_entry)
 
 
 @tool
-def tool_update_sales_invoice(invoice_id: int,
-                               comments: str) -> dict:
-    """
-    Update invoice comments.
-    invoice_id: Invoice ID number
-    comments: New comment text
-    """
-    return update_sales_invoice(invoice_id, comments)
+def tool_reopen_invoice(doc_entry: int) -> dict:
+    """Reopen a closed invoice. doc_entry: Invoice DocEntry"""
+    return reopen_sales_invoice(doc_entry)
 
 
 @tool
-def tool_cancel_sales_invoice(invoice_id: int) -> dict:
+def get_all_invoices() -> dict:
+    """Get all sales invoices from database."""
+    sql = """
+        SELECT "DocNum", "DocDate", "CardName",
+               "DocTotal", "DocStatus"
+        FROM "OINV"
+        ORDER BY "DocNum" DESC
     """
-    Cancel a sales invoice.
-    invoice_id: Invoice ID number
-    """
-    return cancel_sales_invoice(invoice_id)
+    return execute_query(sql)
 
 
-@tool
-def tool_delete_sales_invoice(invoice_id: int) -> dict:
-    """
-    Delete a sales invoice.
-    invoice_id: Invoice ID number
-    """
-    return delete_sales_invoice(invoice_id)
-
-
-sales_invoice_tools = [
-    tool_create_sales_invoice,
-    tool_get_sales_invoice,
-    tool_get_all_sales_invoices,
-    tool_update_sales_invoice,
-    tool_cancel_sales_invoice,
-    tool_delete_sales_invoice
+invoice_tools = [
+    tool_create_invoice, tool_cancel_invoice,
+    tool_close_invoice, tool_reopen_invoice,
+    get_all_invoices
 ]
 
-llm = ChatGroq(
-    model="llama-3.3-70b-versatile",
-    api_key=os.getenv("GROQ_API_KEY"),
-    temperature=0
-)
-
-sales_invoice_agent = create_react_agent(
+invoice_agent = create_react_agent(
     model=llm,
-    tools=sales_invoice_tools,
-    prompt="""You are a Sales Invoice Agent for SAP B1.
-    Your job is to manage sales invoices.
-    You can create, read, update, cancel and delete invoices.
-    Always confirm actions clearly.
-    """
+    tools=invoice_tools,
+    prompt="""You are a SAP B1 Sales Invoice specialist at Techative Pvt Ltd.
+
+OPERATIONS:
+- Create invoice  → tool_create_invoice
+- Cancel invoice  → tool_cancel_invoice
+- Close invoice   → tool_close_invoice
+- Reopen invoice  → tool_reopen_invoice
+- List invoices   → get_all_invoices
+
+Always confirm DocEntry after creation.
+Default TaxCode is T1 if not specified."""
 )
 
 
 def run_sales_invoice_agent(user_message: str) -> str:
-    result = sales_invoice_agent.invoke({
+    result = invoice_agent.invoke({
         "messages": [HumanMessage(content=user_message)]
     })
     return result["messages"][-1].content

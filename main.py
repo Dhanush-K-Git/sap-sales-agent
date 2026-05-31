@@ -1,14 +1,11 @@
-import os
-from langchain_groq import ChatGroq
+# main.py — REPLACE entire file with this
 
-llm = ChatGroq(
-    temperature=0, 
-    groq_api_key=os.getenv("GROQ_API_KEY"), 
-    model_name="llama-3.3-70b-versatile" # or "llama3-8b-8192"
-)
+import os
+import asyncio
+from dotenv import load_dotenv
+from app.agents.supervisor_agent import run_supervisor
 
 load_dotenv()
-
 
 def main():
     print("\n" + "="*50)
@@ -19,21 +16,16 @@ def main():
 
     while True:
         user_input = input("You: ").strip()
-
         if user_input.lower() in ["exit", "quit", "bye"]:
-            print("\nGoodbye! 👋")
+            print("\nGoodbye!")
             break
-
         if not user_input:
             continue
-
         try:
-            response = run_supervisor(user_input)
+            response = asyncio.run(run_supervisor(user_input))
             print(f"\nAgent: {response}\n")
         except Exception as e:
             print(f"\nError: {str(e)}\n")
-            print("Please try again!\n")
-
 
 if __name__ == "__main__":
     main()

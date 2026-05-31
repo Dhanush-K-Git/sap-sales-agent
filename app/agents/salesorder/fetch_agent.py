@@ -1,28 +1,44 @@
-# Add this import at the top of fetch_agent.py
-from app.operations.llm_config import llm_fetch as llm
-from app.operations.sap_client import sap_get # You'll need to add a GET function to sap_client.py
-from app.operations.schema_rag import get_schema_from_rag
+# app/agents/salesorder/fetch_agent.py
 import os
+from dotenv import load_dotenv
 from langchain_core.tools import tool
 from langchain_core.messages import HumanMessage
 from langgraph.prebuilt import create_react_agent
-import os
-import requests
-from dotenv import load_dotenv
+from app.operations.llm_config import llm_fetch as llm
+from app.operations.schema_rag import get_schema_from_rag
 from app.operations.utils import execute_query
 
 load_dotenv()
 
-from app.operations.llm_config import llm_fetch
-
 
 @tool
 def get_all_customers() -> dict:
-    """Get the complete list of all customers."""
-    sql = """
-        SELECT "CardCode", "CardName", "Phone", "Email", "CreditLimit", "Balance"
-        FROM "OCRD"
+    """Get complete list of all customers from SAP B1."""
+    sql = """SELECT
+        "CardCode", "CardName", "CardType",
+        "Phone1", "Balance", "CreditLine", "Address"
+        FROM OCRD
+        WHERE "CardType" = 'C'
         ORDER BY "CardCode"
+    """
+    return execute_query(sql)
+
+@tool
+def search_customers(search_term: str) -> dict:
+    """
+    Search customers by code or name.
+    search_term: Any part of customer name or code
+    """
+    sql = f"""SELECT
+        "CardCode", "CardName", "Phone1",
+        "Balance", "CreditLine", "Address"
+        FROM OCRD
+        WHERE "CardType" = 'C'
+        AND (
+            "CardName" LIKE '%{search_term}%'
+            OR "CardCode" LIKE '%{search_term}%'
+        )
+        ORDER BY "CardName"
     """
     return execute_query(sql)
 
@@ -30,20 +46,24 @@ def get_all_customers() -> dict:
 @tool
 def get_customer_info(customer_name: str) -> dict:
     """Get details for a specific customer by name."""
-    sql = f"""
-        SELECT "CardCode", "CardName", "Phone", "Email", "CreditLimit", "Balance"
-        FROM "OCRD"
-        WHERE "CardName" ILIKE '%{customer_name}%'
+    sql = f"""SELECT
+        "CardCode", "CardName", "Phone1",
+        "Balance", "CreditLine", "Address"
+        FROM OCRD
+        WHERE "CardName" LIKE '%{customer_name}%'
+        AND "CardType" = 'C'
     """
     return execute_query(sql)
 
 
 @tool
 def get_all_items() -> dict:
-    """Get the complete list of all items/products."""
-    sql = """
-        SELECT "ItemCode", "ItemName", "Price", "Stock", "ItemGroup"
-        FROM "OITM"
+    """Get complete list of all items/products from SAP B1."""
+    sql = """SELECT
+        "ItemCode", "ItemName", "OnHand",
+        "AvgPrice", "SellItem", "InvntItem"
+        FROM OITM
+        WHERE "SellItem" = 'Y'
         ORDER BY "ItemCode"
     """
     return execute_query(sql)
@@ -52,120 +72,117 @@ def get_all_items() -> dict:
 @tool
 def get_item_info(item_name: str) -> dict:
     """Get stock and price for a specific item by name."""
-    sql = f"""
-        SELECT "ItemCode", "ItemName", "Price", "Stock", "ItemGroup"
-        FROM "OITM"
-        WHERE "ItemName" ILIKE '%{item_name}%'
+    sql = f"""SELECT
+        "ItemCode", "ItemName", "OnHand",
+        "AvgPrice", "SellItem"
+        FROM OITM
+        WHERE "ItemName" LIKE '%{item_name}%'
     """
     return execute_query(sql)
 
 
 @tool
 def get_all_orders() -> dict:
-    """Get all sales orders with customer and item details."""
-    sql = """
-        SELECT
-            o."DocNum"  AS order_number,
-            o."DocDate" AS date,
-            o."CardName" AS customer_name,
-            o."DocTotal" AS total,
-            o."DocStatus" AS status,
-            l."ItemName" AS item_name,
-            l."Quantity" AS quantity,
-            l."Price"    AS price
-        FROM "ORDR" o
-        JOIN "RDR1" l ON o."DocEntry" = l."DocEntry"
-        ORDER BY o."DocNum"
+    """Get all sales orders from SAP B1."""
+    sql = """SELECT
+        T0."DocNum", T0."DocDate", T0."DocDueDate",
+        T0."CardCode", T0."CardName",
+        T0."DocTotal", T0."DocStatus", T0."DocCur",
+        T1."ItemCode", T1."Dscription",
+        T1."Quantity", T1."Price"
+        FROM ORDR T0
+        INNER JOIN RDR1 T1 ON T0."DocEntry" = T1."DocEntry"
+        ORDER BY T0."DocNum" DESC
     """
     return execute_query(sql)
 
 
 @tool
 def get_orders_by_customer(customer_name: str) -> dict:
-    """Get all orders for a specific customer by name."""
-    sql = f"""
-        SELECT
-            o."DocNum"   AS order_number,
-            o."DocDate"  AS date,
-            o."CardName" AS customer_name,
-            o."DocTotal" AS total,
-            o."DocStatus" AS status,
-            l."ItemName" AS item_name,
-            l."Quantity" AS quantity
-        FROM "ORDR" o
-        JOIN "RDR1" l ON o."DocEntry" = l."DocEntry"
-        WHERE o."CardName" ILIKE '%{customer_name}%'
-        ORDER BY o."DocNum"
+    """Get all orders for a specific customer."""
+    sql = f"""SELECT
+        T0."DocNum", T0."DocDate",
+        T0."CardCode", T0."CardName",
+        T0."DocTotal", T0."DocStatus",
+        T1."ItemCode", T1."Dscription",
+        T1."Quantity", T1."Price"
+        FROM ORDR T0
+        INNER JOIN RDR1 T1 ON T0."DocEntry" = T1."DocEntry"
+        WHERE T0."CardName" LIKE '%{customer_name}%'
+        ORDER BY T0."DocNum" DESC
     """
     return execute_query(sql)
 
 
 @tool
 def get_open_orders() -> dict:
-    """Get all open (pending) sales orders."""
-    sql = """
-        SELECT
-            o."DocNum"   AS order_number,
-            o."DocDate"  AS date,
-            o."CardName" AS customer_name,
-            o."DocTotal" AS total,
-            l."ItemName" AS item_name,
-            l."Quantity" AS quantity
-        FROM "ORDR" o
-        JOIN "RDR1" l ON o."DocEntry" = l."DocEntry"
-        WHERE o."DocStatus" = 'O'
-        ORDER BY o."DocNum"
+    """Get all open/pending sales orders."""
+    sql = """SELECT
+        T0."DocNum", T0."DocDate", T0."DocDueDate",
+        T0."CardCode", T0."CardName",
+        T0."DocTotal", T0."DocStatus",
+        T1."ItemCode", T1."Dscription", T1."Quantity"
+        FROM ORDR T0
+        INNER JOIN RDR1 T1 ON T0."DocEntry" = T1."DocEntry"
+        WHERE T0."DocStatus" = 'O'
+        ORDER BY T0."DocNum" DESC
     """
     return execute_query(sql)
 
 
 @tool
 def get_order_summary() -> dict:
-    """Get total count and value statistics for all orders."""
-    sql = """
-        SELECT
-            COUNT(*) AS total_orders,
-            SUM("DocTotal") AS total_amount,
-            COUNT(CASE WHEN "DocStatus"='O' THEN 1 END) AS open_orders,
-            COUNT(CASE WHEN "DocStatus"='C' THEN 1 END) AS closed_orders
-        FROM "ORDR"
+    """Get total statistics for all sales orders."""
+    sql = """SELECT
+        COUNT(*) AS TotalOrders,
+        SUM("DocTotal") AS TotalValue,
+        SUM(CASE WHEN "DocStatus"='O' THEN 1 ELSE 0 END) AS OpenOrders,
+        SUM(CASE WHEN "DocStatus"='C' THEN 1 ELSE 0 END) AS ClosedOrders,
+        AVG("DocTotal") AS AvgOrderValue,
+        MAX("DocTotal") AS HighestOrder,
+        MIN("DocTotal") AS LowestOrder
+        FROM ORDR
     """
     return execute_query(sql)
+
 
 @tool
 def text_to_sql_with_rag(question: str) -> dict:
     """
-    Use this for ANY complex or custom question not covered by
-    the other tools. Uses RAG to find relevant schema, then
-    generates and runs the correct SQL automatically.
-    question: Any natural language question about sales data
+    Use for complex analytical questions.
+    RAG finds schema, Claude generates SQL,
+    runs against Sir's SAP HANA API.
     """
     try:
-        # STEP 1 — RAG: find relevant schema for this question
         schema_context = get_schema_from_rag(question)
+        from app.operations.llm_config import get_llm
+        sql_llm = get_llm(max_tokens=512)
 
-        # STEP 2 — LLM: generate SQL from question + schema
-        from langchain_groq import ChatGroq
-        from langchain_core.messages import HumanMessage, SystemMessage
+        prompt = f"""You are a SAP HANA SQL expert for SAP Business One.
+Generate ONLY a valid SQL SELECT query. No explanation, no markdown.
 
-        sql_llm = ChatGroq(
-            model="llama-3.3-70b-versatile",
-            api_key=os.getenv("GROQ_API_KEY"),
-            temperature=0
-        )
+SAP B1 TABLES AND EXACT COLUMN NAMES:
+- ORDR (Sales Orders): DocNum, DocDate, DocDueDate, CardCode,
+  CardName, DocTotal, DocStatus, DocCur, CANCELED
+- RDR1 (Order Lines): DocEntry, ItemCode, Dscription,
+  Quantity, Price, LineTotal
+- OCRD (Customers): CardCode, CardName, CardType,
+  Phone1, Balance, CreditLine, Address
+- OITM (Items): ItemCode, ItemName, OnHand,
+  AvgPrice, SellItem
 
-        prompt = f"""You are a PostgreSQL expert.
-Generate ONLY a valid SQL SELECT query. No explanation, no markdown, no backticks.
-
-DATABASE SCHEMA (relevant tables and columns):
+ADDITIONAL SCHEMA FROM RAG:
 {schema_context}
 
-IMPORTANT RULES:
-- All table and column names MUST be in double quotes e.g. "ORDR", "CardName"
-- Use ILIKE for case-insensitive text search
-- Always use SELECT, never INSERT/UPDATE/DELETE
-- For joins: ORDR joins RDR1 on "DocEntry"
-- For joins: OCRD has customer info (CardCode, CardName)
+RULES:
+- Use double quotes around column names
+- Use T0, T1 aliases for table joins
+- Use INNER JOIN for joining tables
+- Use TOP N to limit results (e.g. TOP 20)
+- Use LIKE for text search (not ILIKE)
+- DocStatus: O=Open, C=Closed
+- CANCELED: Y=Cancelled, N=Not cancelled
+- Join ORDR and RDR1 on DocEntry
 
 USER QUESTION: {question}
 
@@ -173,16 +190,11 @@ SQL QUERY:"""
 
         response = sql_llm.invoke([HumanMessage(content=prompt)])
         generated_sql = response.content.strip()
+        generated_sql = generated_sql.replace("```sql","").replace("```","").strip()
+        print(f"\n[RAG SQL] {generated_sql}\n")
 
-        # Clean up if LLM adds backticks anyway
-        generated_sql = generated_sql.replace("```sql", "").replace("```", "").strip()
-
-        print(f"\n[RAG] Generated SQL:\n{generated_sql}\n")
-
-        # STEP 3 — Execute the generated SQL
         result = execute_query(generated_sql)
         result["generated_sql"] = generated_sql
-        result["schema_used"] = schema_context
         return result
 
     except Exception as e:
@@ -190,7 +202,7 @@ SQL QUERY:"""
 
 
 fetch_tools = [
-    text_to_sql_with_rag,    # ← RAG-powered text-to-SQL (for complex questions)
+    text_to_sql_with_rag,
     get_all_customers,
     get_customer_info,
     get_all_items,
@@ -204,82 +216,56 @@ fetch_tools = [
 fetch_agent = create_react_agent(
     model=llm,
     tools=fetch_tools,
-prompt="""You are Alex, a professional SAP B1 Sales Intelligence Assistant
+    prompt="""You are Alex, a professional SAP B1 Sales Intelligence Assistant
 at Techative Pvt Ltd Solutions.
 
 Sir instruction: The response from the agent is the main thing to impress clients.
 
-RESPONSE FORMAT RULES - FOLLOW STRICTLY:
-
-1. Always start with a greeting and report title.
-   Example: Hello! Here is your Customer Master Report.
-
-2. Always show a SUMMARY section first:
-   SUMMARY
-   --------------------------
-   Total Orders   : 10
-   Open Orders    : 6
-   Closed Orders  : 4
-   Total Value    : Rs.12,50,000
-   --------------------------
-
-3. Always show data in a clean MARKDOWN TABLE with proper columns.
-
-4. Always end with KEY INSIGHTS section:
-   KEY INSIGHTS
-   - Highest order : Order 1001 - Rs.1,00,000
-   - Most active   : C001 with 3 orders
-   - Attention     : 6 open orders pending
+RESPONSE FORMAT - FOLLOW STRICTLY:
+1. Greeting and report title
+2. SUMMARY section with key numbers
+3. Clean MARKDOWN TABLE with proper columns
+4. KEY INSIGHTS at the end
 
 FORMAT RULES:
-   - NO emojis anywhere in the response
-   - Professional business language only
-   - Use Rs. for all currency amounts
-   - Status must show as [Open] or [Closed] or [Pending]
-   - Stock status: [In Stock] or [Low Stock] or [Out of Stock]
-   - Bold important numbers using **value**
-   - Separate sections with ---
-   - Always calculate and show totals and averages
-   - Always add business insights at the end
+- NO emojis anywhere
+- Professional business language only
+- Use Rs. for all currency amounts
+- Status: [Open] or [Closed] or [Pending]
+- Bold important numbers using **value**
+- Separate sections with ---
+- Always calculate totals and averages
+- Always add business insights
 
-FOR CUSTOMER QUERIES show these columns:
-   Code | Customer Name | Phone | Credit Limit | Balance | Available Credit | Utilization %
+FOR CUSTOMER QUERIES:
+| Code | Customer Name | Phone | Credit Limit | Balance | Address |
 
-FOR ORDER QUERIES show these columns:
-   Order No | Date | Customer | Item | Qty | Unit Price | Total | Status
+FOR ORDER QUERIES:
+| Order No | Date | Customer | Item | Qty | Price | Total | Status |
 
-FOR ITEM QUERIES show these columns:
-   Item Code | Item Name | Price | Stock | Stock Status
+FOR ITEM QUERIES:
+| Item Code | Item Name | Stock | Price | Status |
 
-FOR INVOICE QUERIES show these columns:
-   Invoice No | Date | Customer | Amount | Status
+FOR SUMMARY:
+- Total count and total value
+- Open vs Closed breakdown
+- Average order value
+- Highest and lowest
+- What needs attention
 
-FOR RETURN QUERIES show these columns:
-   Return No | Date | Customer | Amount | Status
+TOOLS:
+- get_all_customers      - list all customers
+- get_customer_info      - one specific customer
+- get_all_items          - list all products
+- get_item_info          - one specific item
+- get_all_orders         - all sales orders
+- get_orders_by_customer - orders for one customer
+- get_open_orders        - pending orders only
+- get_order_summary      - statistics and totals
+- text_to_sql_with_rag   - complex questions
 
-FOR SUMMARY AND ANALYTICS show:
-   - Total count and total value
-   - Open vs Closed breakdown
-   - Average value
-   - Highest and lowest
-   - What needs attention
-
-TOOLS TO USE:
-   - get_all_customers      - list customers, show customers
-   - get_customer_info      - details of one specific customer
-   - get_all_items          - list items, show all products
-   - get_item_info          - price or stock of one item
-   - get_all_orders         - show all orders
-   - get_orders_by_customer - orders for a specific customer
-   - get_open_orders        - open orders, pending orders
-   - get_order_summary      - summary, statistics, totals
-   - text_to_sql_with_rag   - complex analytical questions
-
-NEVER say data is unavailable without trying a tool first.
-NEVER give plain text data dumps.
-ALWAYS format every response as a proper professional business report.
 ALWAYS use a tool before responding.
-"""
+NEVER say data is unavailable without trying a tool."""
 )
 
 

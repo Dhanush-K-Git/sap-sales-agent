@@ -5,14 +5,21 @@ from langchain_anthropic import ChatAnthropic
 
 load_dotenv()
 
+
 def get_llm(max_tokens: int = 1024):
     return ChatAnthropic(
         model="claude-opus-4-7",
         api_key=os.getenv("ANTHROPIC_API_KEY"),
-        max_tokens=max_tokens
+        max_tokens=max_tokens,
+        # temperature REMOVED — deprecated in claude-opus-4-7
+        model_kwargs={
+            "extra_headers": {
+                "anthropic-beta": "prompt-caching-2024-07-31"
+            }
+        }
     )
 
-# One LLM per agent with appropriate token limits
+
 llm_supervisor = get_llm(max_tokens=64)
 llm_fetch      = get_llm(max_tokens=2048)
 llm_create     = get_llm(max_tokens=1024)

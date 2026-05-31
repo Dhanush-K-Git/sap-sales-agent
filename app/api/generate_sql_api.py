@@ -63,7 +63,6 @@ SQL QUERY:"""
             }
         ],
         model="llama-3.3-70b-versatile",
-        temperature=0,
         max_tokens=300
     )
 

@@ -1,19 +1,17 @@
+# streamlit_app.py
 import streamlit as st
 import asyncio
 from dotenv import load_dotenv
-from app.agents.supervisor_agent import run_supervisor
-
+from app.agents.supervisor_agent import run_supervisor, run_supervisor_with_memory
 load_dotenv()
 
-# PAGE CONFIG
 st.set_page_config(
     page_title="SAP B1 Sales Agent",
-    page_icon="🤖",
+    page_icon="",
     layout="wide",
     initial_sidebar_state="expanded"
 )
 
-# CUSTOM CSS
 st.markdown("""
     <style>
     .main-header {
@@ -26,113 +24,106 @@ st.markdown("""
     </style>
 """, unsafe_allow_html=True)
 
-# HEADER
 st.markdown("""
     <div class="main-header">
-        <h1>🤖 SAP B1 Sales Team Agent</h1>
+        <h1>SAP B1 Sales Agent</h1>
         <p>Built for Techative Pvt Ltd Solutions</p>
     </div>
 """, unsafe_allow_html=True)
 
-# CHAT INIT
+# ─────────────────────────────────────────
+# SESSION STATE — stores full conversation
+# ─────────────────────────────────────────
 if "messages" not in st.session_state:
     st.session_state.messages = []
     st.session_state.messages.append({
         "role": "assistant",
-        "content": """👋 Hello! I'm **Alex**, your SAP B1 Sales Assistant!
+        "content": """Hello! I am your SAP B1 Sales Assistant at Techative Pvt Ltd.
 
 I can help you with:
-- 📦 **Sales Orders** - Create, update, cancel, close
-- 🧾 **Sales Invoices** - Create, update, cancel
-- 🔄 **Sales Returns** - Create, update, cancel
-- 🔍 **Analytics** - Reports, trends, insights
-- ✅ **Validation** - Check customers, stock, credit
+- Sales Orders   : Create, Update, Cancel, Close
+- Sales Invoices : Create, Cancel, Close, Reopen
+- Sales Returns  : Create, Cancel, Close, Reopen
+- Analytics      : Reports, customer insights, trends
 
-How can I help you today? 😊"""
+How can I help you today?"""
     })
 
-# Display chat history
+# Display full chat history
 for message in st.session_state.messages:
     with st.chat_message(message["role"]):
         st.markdown(message["content"])
 
-# ✅ FIX: The ENTIRE response block must be INSIDE this if statement
-if prompt := st.chat_input("Ask me anything about your sales data..."):
+# ─────────────────────────────────────────
+# CHAT INPUT
+# ─────────────────────────────────────────
+if prompt := st.chat_input("Ask anything about your sales data..."):
 
-    st.session_state.messages.append({"role": "user", "content": prompt})
+    # Add user message to history
+    st.session_state.messages.append({
+        "role": "user",
+        "content": prompt
+    })
     with st.chat_message("user"):
         st.markdown(prompt)
 
-    # ✅ This block is correctly indented inside the if
     with st.chat_message("assistant"):
-        with st.spinner("Alex is thinking... 🤔"):
+        # ── STREAMING response — words appear as generated ──
+        response_placeholder = st.empty()
+        full_response = ""
+
+        with st.spinner("Thinking..."):
             try:
-                response = asyncio.run(run_supervisor(prompt))
-                st.markdown(response)
-                st.session_state.messages.append({
-                    "role": "assistant",
-                    "content": response
-                })
+                # ── Pass FULL conversation history for memory ──
+                response = asyncio.run(
+                    run_supervisor_with_memory(
+                        user_message=prompt,
+                        chat_history=st.session_state.messages[:-1]
+                    )
+                )
+                full_response = response
+                response_placeholder.markdown(full_response)
+
             except Exception as e:
-                error_msg = f"⚠️ Error: {str(e)}"
-                st.error(error_msg)
+                full_response = f"Error: {str(e)}"
+                response_placeholder.error(full_response)
 
+        # Save to history
+        st.session_state.messages.append({
+            "role": "assistant",
+            "content": full_response
+        })
+
+# ─────────────────────────────────────────
 # SIDEBAR
+# ─────────────────────────────────────────
 with st.sidebar:
-    st.image(
-        "https://upload.wikimedia.org/wikipedia/commons/thumb/5/59/SAP_2011_logo.svg/1200px-SAP_2011_logo.svg.png",
-        width=100
-    )
-    st.markdown("### 🚀 Quick Actions")
+    st.markdown("### Quick Actions")
+    st.markdown("#### Sales Orders")
 
-    st.markdown("#### 📦 Sales Orders")
-    if st.button("📋 All Orders", use_container_width=True):
+    if st.button("All Orders", use_container_width=True):
         st.session_state.messages.append({"role": "user", "content": "Show me all sales orders"})
         st.rerun()
-
-    if st.button("✅ Open Orders", use_container_width=True):
+    if st.button("Open Orders", use_container_width=True):
         st.session_state.messages.append({"role": "user", "content": "Show me all open orders"})
         st.rerun()
-
-    if st.button("📊 Sales Summary", use_container_width=True):
-        st.session_state.messages.append({"role": "user", "content": "Give me a complete sales summary"})
+    if st.button("Sales Summary", use_container_width=True):
+        st.session_state.messages.append({"role": "user", "content": "Give me complete sales summary"})
         st.rerun()
 
     st.divider()
-    st.markdown("#### ✅ Quick Validation")
+    st.markdown("#### Validation")
     customer_code = st.text_input("Customer Code", placeholder="e.g. C001")
     if st.button("Validate Customer", use_container_width=True):
         if customer_code:
             st.session_state.messages.append({"role": "user", "content": f"Validate customer {customer_code}"})
             st.rerun()
 
-    item_name = st.text_input("Item Name", placeholder="e.g. Laptop")
-    if st.button("Check Stock", use_container_width=True):
-        if item_name:
-            st.session_state.messages.append({"role": "user", "content": f"What is the stock for {item_name}?"})
-            st.rerun()
-
     st.divider()
-    st.markdown("#### 🔍 Analytics")
-    if st.button("💰 Top Customers", use_container_width=True):
-        st.session_state.messages.append({"role": "user", "content": "Which customers have highest order values?"})
-        st.rerun()
-
-    if st.button("📦 Popular Items", use_container_width=True):
-        st.session_state.messages.append({"role": "user", "content": "Which items are ordered the most?"})
-        st.rerun()
-
-    if st.button("📅 Monthly Orders", use_container_width=True):
-        st.session_state.messages.append({"role": "user", "content": "Show me orders grouped by month"})
-        st.rerun()
-
-    st.divider()
-    st.markdown("#### ℹ️ System Info")
-    st.markdown("**API:** [Open Docs](https://sap-sales-agent-1.onrender.com/docs)")
-    st.markdown("**Version:** 1.0.0")
-    st.markdown("**Company:** Techative Pvt Ltd")
-
-    st.divider()
-    if st.button("🗑️ Clear Chat", use_container_width=True):
+    if st.button("Clear Chat", use_container_width=True):
         st.session_state.messages = []
         st.rerun()
+
+    st.divider()
+    st.markdown("**Version:** 2.0.0")
+    st.markdown("**Company:** Techative Pvt Ltd")

@@ -7,8 +7,8 @@ from dotenv import load_dotenv
 
 load_dotenv()
 
-SAP_BASE_URL = os.getenv("SAP_BASE_URL", "https://localhost:50000/b1s/v2")
-
+# In sap_client.py
+SAP_BASE_URL = os.getenv("SAP_BASE_URL", "http://vzone.in:1662")
 # Disable SSL warnings for localhost testing
 import urllib3
 urllib3.disable_warnings(urllib3.exceptions.InsecureRequestWarning)
@@ -34,21 +34,34 @@ def sap_post(endpoint: str, payload: dict) -> dict:
     except Exception as e:
         return {"success": False, "error": str(e)}
     
-def sap_get(endpoint: str) -> dict:
-    """Generic GET request to SAP B1 Service Layer."""
-    url = f"{SAP_BASE_URL}/{endpoint}"
+def sap_get(query_string: str) -> dict:
+    """Generic GET request to the custom vzone API."""
+    # Matches your Swagger URL exactly
+    url = f"{SAP_BASE_URL}/api/GetMethod/GetData"
+    
+    # These headers help bypass the '403 Forbidden' by making the request
+    # look exactly like the one from your browser/Swagger.
+    headers = {
+        "accept": "*/*",
+        "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64)"
+    }
+    
+    # This automatically adds '?query=...' to the URL
+    params = {"query": query_string}
+    
     try:
-        # verify=False is needed for your localhost testing
         response = requests.get(
             url, 
+            params=params, 
+            headers=headers, 
             verify=False, 
             timeout=30
-            # headers=headers  <-- Uncomment this if you have your Session ID headers ready
         )
         
         if response.status_code == 200:
-            return {"success": True, "data": response.json().get("value", [])}
-        
+            # The Swagger shows it returns a list directly
+            return {"success": True, "data": response.json()}
+            
         return {
             "success": False, 
             "status_code": response.status_code, 

@@ -1,8 +1,16 @@
 # streamlit_app.py
 import streamlit as st
 import asyncio
+import uuid
 from dotenv import load_dotenv
-from app.agents.supervisor_agent import run_supervisor, run_supervisor_with_memory
+from app.agents.supervisor_agent import run_supervisor_with_memory
+from app.operations.memory_store import (
+    save_message,
+    load_long_term_memory,
+    clear_session_memory,
+    get_memory_stats
+)
+
 load_dotenv()
 
 st.set_page_config(
@@ -21,6 +29,14 @@ st.markdown("""
         color: white;
         margin-bottom: 20px;
     }
+    .memory-badge {
+        background: #1e3c72;
+        color: white;
+        padding: 4px 10px;
+        border-radius: 12px;
+        font-size: 12px;
+        display: inline-block;
+    }
     </style>
 """, unsafe_allow_html=True)
 
@@ -31,14 +47,37 @@ st.markdown("""
     </div>
 """, unsafe_allow_html=True)
 
+
 # ─────────────────────────────────────────
-# SESSION STATE — stores full conversation
+# SESSION ID — unique per browser session
+# Used as key for long term memory
+# ─────────────────────────────────────────
+if "session_id" not in st.session_state:
+    st.session_state.session_id = str(uuid.uuid4())[:8]
+    print(f"[Memory] New session: {st.session_state.session_id}")
+
+# ─────────────────────────────────────────
+# SHORT TERM — load from session_state
+# LONG TERM  — restore from PostgreSQL
+#              if session_state is empty
 # ─────────────────────────────────────────
 if "messages" not in st.session_state:
-    st.session_state.messages = []
-    st.session_state.messages.append({
-        "role": "assistant",
-        "content": """Hello! I am your SAP B1 Sales Assistant at Techative Pvt Ltd.
+    # Try to restore from long term memory
+    restored = load_long_term_memory(
+        st.session_state.session_id,
+        limit=10
+    )
+
+    if restored:
+        # Long term memory found — restore it
+        st.session_state.messages = restored
+        print(f"[Memory] Restored {len(restored)} messages")
+    else:
+        # Fresh session — show welcome message
+        st.session_state.messages = []
+        st.session_state.messages.append({
+            "role": "assistant",
+            "content": """Hello! I am your SAP B1 Sales Assistant at Techative Pvt Ltd.
 
 I can help you with:
 - Sales Orders   : Create, Update, Cancel, Close
@@ -47,9 +86,11 @@ I can help you with:
 - Analytics      : Reports, customer insights, trends
 
 How can I help you today?"""
-    })
+        })
 
-# Display full chat history
+# ─────────────────────────────────────────
+# DISPLAY CHAT HISTORY
+# ─────────────────────────────────────────
 for message in st.session_state.messages:
     with st.chat_message(message["role"]):
         st.markdown(message["content"])
@@ -59,40 +100,52 @@ for message in st.session_state.messages:
 # ─────────────────────────────────────────
 if prompt := st.chat_input("Ask anything about your sales data..."):
 
-    # Add user message to history
+    # 1 — Add to short term (session_state)
     st.session_state.messages.append({
         "role": "user",
         "content": prompt
     })
+
+    # 2 — Save to long term (PostgreSQL)
+    save_message(
+        session_id=st.session_state.session_id,
+        role="user",
+        content=prompt
+    )
+
     with st.chat_message("user"):
         st.markdown(prompt)
 
     with st.chat_message("assistant"):
-        # ── STREAMING response — words appear as generated ──
-        response_placeholder = st.empty()
-        full_response = ""
-
         with st.spinner("Thinking..."):
             try:
-                # ── Pass FULL conversation history for memory ──
+                # 3 — Pass short term history to agent
                 response = asyncio.run(
                     run_supervisor_with_memory(
                         user_message=prompt,
                         chat_history=st.session_state.messages[:-1]
                     )
                 )
-                full_response = response
-                response_placeholder.markdown(full_response)
+
+                st.markdown(response)
+
+                # 4 — Save response to short term
+                st.session_state.messages.append({
+                    "role": "assistant",
+                    "content": response
+                })
+
+                # 5 — Save response to long term
+                save_message(
+                    session_id=st.session_state.session_id,
+                    role="assistant",
+                    content=response
+                )
 
             except Exception as e:
-                full_response = f"Error: {str(e)}"
-                response_placeholder.error(full_response)
+                error_msg = f"Error: {str(e)}"
+                st.error(error_msg)
 
-        # Save to history
-        st.session_state.messages.append({
-            "role": "assistant",
-            "content": full_response
-        })
 
 # ─────────────────────────────────────────
 # SIDEBAR
@@ -120,8 +173,36 @@ with st.sidebar:
             st.rerun()
 
     st.divider()
-    if st.button("Clear Chat", use_container_width=True):
+
+    # ── MEMORY STATUS ──────────────────────
+    st.markdown("#### Memory Status")
+    stats = get_memory_stats(st.session_state.session_id)
+
+    st.markdown(f"""
+    <div class="memory-badge">Session: {st.session_state.session_id}</div>
+    """, unsafe_allow_html=True)
+
+    st.markdown(f"""
+    **Short term:** {len(st.session_state.messages)} messages in session
+    **Long term:** {stats['total_messages']} messages in database
+    """)
+
+    if stats['last_message']:
+        st.caption(f"Last active: {stats['last_message'][:16]}")
+
+    st.divider()
+
+    # ── CLEAR BUTTONS ──────────────────────
+    if st.button("Clear Chat (keep memory)", use_container_width=True):
+        # Only clear screen — keep long term
         st.session_state.messages = []
+        st.rerun()
+
+    if st.button("Clear All Memory", use_container_width=True):
+        # Clear both short and long term
+        st.session_state.messages = []
+        clear_session_memory(st.session_state.session_id)
+        st.session_state.session_id = str(uuid.uuid4())[:8]
         st.rerun()
 
     st.divider()
